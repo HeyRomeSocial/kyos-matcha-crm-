@@ -131,7 +131,7 @@ export default function Partners() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Name', 'Status', 'Contact', 'Price/KG', 'Projected KG/mo', 'Last Order', 'Next Order', 'Total Orders', ''].map(h => (
+                {['Name', 'Status', 'Contact', 'Price/KG', 'Total Orders', 'Total KG', 'Total Spent', 'Last Order', 'Next Order', ''].map(h => (
                   <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -140,7 +140,7 @@ export default function Partners() {
               {loading ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-gray-400">No cafes found</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">No cafes found</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 group">
                   <td className="px-4 py-3">
@@ -159,10 +159,11 @@ export default function Partners() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{p.contact_name || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{p.price_per_kg ? formatCurrency(p.price_per_kg) : '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{p.projected_kg_month ? `${p.projected_kg_month}kg` : '—'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.total_orders || 0}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.total_kg ? `${Number(p.total_kg).toFixed(1)}kg` : '—'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-[#3D6034]">{p.total_spent ? formatCurrency(p.total_spent) : '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.last_order_date)}</td>
                   <td className="px-4 py-3"><NextOrderCell partner={p} /></td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{p.total_orders || 0}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button

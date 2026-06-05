@@ -125,11 +125,13 @@ export default function InvoiceGenerator() {
       const newTotalOrders = (selectedPartner.total_orders || 0) + 1
       const matchaKg = lineItems.reduce((s, i) => i.desc?.toLowerCase().includes('matcha') ? s + i.qty : s, 0)
       const newTotalKg = (selectedPartner.total_kg || 0) + matchaKg
+      const newTotalSpent = (selectedPartner.total_spent || 0) + total
       const newNextOrder = calcNextOrder(invoiceDate, selectedPartner.reorder_frequency_days)
       await supabase.from('partners').update({
         last_order_date: invoiceDate,
         total_orders: newTotalOrders,
         total_kg: newTotalKg,
+        total_spent: newTotalSpent,
         next_expected_order: newNextOrder || selectedPartner.next_expected_order,
       }).eq('id', selectedPartner.id)
 

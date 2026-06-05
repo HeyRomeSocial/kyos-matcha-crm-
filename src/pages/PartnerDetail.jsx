@@ -41,8 +41,12 @@ export default function PartnerDetail() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-[#3D6034] border-t-transparent rounded-full animate-spin" /></div>
   if (!partner) return <div className="text-center text-gray-400 mt-24">Partner not found.</div>
 
-  const totalSpend = orders.reduce((s, o) => s + (o.total || 0), 0)
-  const totalKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => li.desc?.toLowerCase().includes('matcha') ? a + (li.qty || 0) : a, 0), 0)
+  // Use stored totals from DB (includes historical imported data)
+  const totalKg = partner.total_kg || 0
+  const totalSpend = partner.total_spent || 0
+  // Also calculate from orders in CRM for reference
+  const ordersKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => li.desc?.toLowerCase().includes('matcha') ? a + (li.qty || 0) : a, 0), 0)
+  const ordersSpend = orders.reduce((s, o) => s + (o.total || 0), 0)
 
   const infoFields = [
     ['Contact', partner.contact_name],
@@ -84,18 +88,26 @@ export default function PartnerDetail() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-5">
           <p className="text-xs text-gray-500">Total Orders</p>
           <p className="text-2xl font-bold mt-1">{partner.total_orders || 0}</p>
+          <p className="text-xs text-gray-400 mt-1">all time</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs text-gray-500">Total KG</p>
-          <p className="text-2xl font-bold mt-1">{totalKg.toFixed(1)}kg</p>
+          <p className="text-xs text-gray-500">Total KG Ordered</p>
+          <p className="text-2xl font-bold mt-1">{Number(totalKg).toFixed(1)}kg</p>
+          <p className="text-xs text-gray-400 mt-1">all time</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs text-gray-500">Total Spend</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(totalSpend)}</p>
+          <p className="text-xs text-gray-500">Total Spent</p>
+          <p className="text-2xl font-bold mt-1 text-[#3D6034]">{formatCurrency(totalSpend)}</p>
+          <p className="text-xs text-gray-400 mt-1">all time</p>
+        </div>
+        <div className="card p-5">
+          <p className="text-xs text-gray-500">CRM Orders</p>
+          <p className="text-2xl font-bold mt-1">{orders.length}</p>
+          <p className="text-xs text-gray-400 mt-1">{formatCurrency(ordersSpend)} invoiced here</p>
         </div>
       </div>
 

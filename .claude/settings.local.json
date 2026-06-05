@@ -6,7 +6,10 @@
       "Bash(command -v brew)",
       "Read(//Users/romeabalain/**)",
       "Bash(python3 -c ' *)",
-      "Bash(pip3 install *)"
+      "Bash(pip3 install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
