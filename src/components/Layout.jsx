@@ -17,7 +17,7 @@ const navGroups = [
   {
     label: 'CRM',
     items: [
-      { to: '/partners', label: 'Cafes', icon: Users },
+      { to: '/partners', label: 'Partners', icon: Users },
       { to: '/invoice', label: 'New Invoice', icon: FileText },
       { to: '/orders', label: 'Orders', icon: ClipboardList },
       { to: '/tasks', label: 'Tasks', icon: CheckSquare },

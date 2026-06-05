@@ -121,11 +121,11 @@ export default function Partners() {
     <div className="space-y-6 max-w-7xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Cafes</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{partners.length} cafes total</p>
+          <h1 className="text-xl font-bold text-gray-900">Partners</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{partners.length} partners total</p>
         </div>
         <button onClick={() => setModal('add')} className="btn-primary">
-          <Plus size={16} /> Add Cafe
+          <Plus size={16} /> Add Partner
         </button>
       </div>
 
@@ -135,7 +135,7 @@ export default function Partners() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             className="input pl-8 w-56"
-            placeholder="Search cafes…"
+            placeholder="Search partners…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -191,7 +191,7 @@ export default function Partners() {
               {loading ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">No cafes found</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">No partners found</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 group">
                   <td className="px-4 py-3">
@@ -212,7 +212,11 @@ export default function Partners() {
                   <td className="px-4 py-3 text-sm text-gray-700">{p.price_per_kg ? formatCurrency(p.price_per_kg) : '—'}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.total_orders || 0}</td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.total_kg ? `${Number(p.total_kg).toFixed(1)}kg` : '—'}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-[#3D6034]">{p.total_spent ? formatCurrency(p.total_spent) : '—'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-[#3D6034]">
+                    {p.total_kg && p.price_per_kg
+                      ? formatCurrency(Number(p.total_kg) * Number(p.price_per_kg))
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.last_order_date)}</td>
                   <td className="px-4 py-3"><NextOrderCell partner={p} /></td>
                   <td className="px-4 py-3">

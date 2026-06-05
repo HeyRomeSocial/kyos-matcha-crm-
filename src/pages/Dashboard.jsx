@@ -335,15 +335,15 @@ export default function Dashboard() {
       {/* Revenue by cafe — all time */}
       <div className="card overflow-hidden">
         <div className="p-5 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">All-Time Revenue by Cafe</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Total KG ordered × price per KG agreed with each cafe</p>
+          <h2 className="text-sm font-semibold text-gray-900">Top 10 Partners by Revenue</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Total KG ordered × price per KG · all time</p>
         </div>
-        <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
+        <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="sticky top-0 bg-white z-10">
               <tr className="border-b border-gray-100">
                 <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">#</th>
-                <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Cafe</th>
+                <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Partner</th>
                 <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Total KG</th>
                 <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Price / KG</th>
                 <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Orders</th>
@@ -358,6 +358,7 @@ export default function Dashboard() {
                   const rb = (b.total_kg || 0) * (b.price_per_kg || 0)
                   return rb - ra
                 })
+                .slice(0, 10)
                 .map((p, idx) => {
                   const revenue = (p.total_kg || 0) * (p.price_per_kg || 0)
                   return (
