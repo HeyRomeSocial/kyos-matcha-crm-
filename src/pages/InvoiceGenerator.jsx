@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, calcNextOrder } from '../lib/utils'
-import { Plus, Trash2, Save, Search, X } from 'lucide-react'
+import { Plus, Trash2, Save, Search, X, Mail } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
@@ -107,6 +107,9 @@ export default function InvoiceGenerator() {
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [lineItems, setLineItems] = useState([newItem('Premium Matcha', 1, 0), newItem('Shipping', 1, 0)])
   const [saving, setSaving] = useState(false)
+  const [savedPdfUrl, setSavedPdfUrl] = useState(null)
+  // Editable Bill To fields
+  const [billTo, setBillTo] = useState({ name: '', address: '', contact: '', email: '' })
 
   useEffect(() => {
     async function load() {
@@ -128,6 +131,13 @@ export default function InvoiceGenerator() {
 
   function selectPartner(partner) {
     setSelectedPartner(partner)
+    // Pre-fill Bill To from partner data
+    setBillTo({
+      name: partner.name || '',
+      address: partner.address || '',
+      contact: partner.contact_name || '',
+      email: partner.email || '',
+    })
     const items = []
     if (partner.projected_kg_month && partner.price_per_kg) {
       items.push(newItem(`Premium Matcha — ${partner.projected_kg_month}kg`, partner.projected_kg_month, partner.price_per_kg))
@@ -146,6 +156,44 @@ export default function InvoiceGenerator() {
 
   function removeItem(id) {
     setLineItems(items => items.filter(i => i.id !== id))
+  }
+
+  function resetForm() {
+    const nextNum = parseInt(invoiceNumber.replace('KM-', '')) + 1
+    setInvoiceNumber(`KM-${nextNum}`)
+    setInvoiceDate(format(new Date(), 'yyyy-MM-dd'))
+    setSelectedPartner(null)
+    setBillTo({ name: '', address: '', contact: '', email: '' })
+    setLineItems([newItem('Premium Matcha', 1, 0), newItem('Shipping', 1, 0)])
+    setSavedPdfUrl(null)
+  }
+
+  function openGmail() {
+    const to = billTo.email || ''
+    const subject = encodeURIComponent(`Invoice ${invoiceNumber} — Kyos Matcha`)
+    const body = encodeURIComponent(
+`Hi ${billTo.contact || billTo.name},
+
+Please find your invoice ${invoiceNumber} from Kyos Matcha.
+
+You can view and download it here:
+${savedPdfUrl}
+
+Invoice Total: £${total.toFixed(2)}
+Payment due within 14 days.
+
+Banking Details:
+Account Name: KM WELLNESS LTD
+Sort Code: 04-00-05
+Account Number: 86383529
+
+Thank you for your business.
+
+Kyos Matcha
+partners@kyosmatcha.com
+kyosmatcha.com`
+    )
+    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`, '_blank')
   }
 
   const subtotal = lineItems.reduce((s, i) => s + (i.qty * i.price), 0)
@@ -208,14 +256,8 @@ export default function InvoiceGenerator() {
         next_expected_order: newNextOrder || selectedPartner.next_expected_order,
       }).eq('id', selectedPartner.id)
 
-      toast.success(`Invoice ${invoiceNumber} saved successfully!`)
-
-      // Bump invoice number for next use
-      const nextNum = parseInt(invoiceNumber.replace('KM-', '')) + 1
-      setInvoiceNumber(`KM-${nextNum}`)
-      setInvoiceDate(format(new Date(), 'yyyy-MM-dd'))
-      setSelectedPartner(null)
-      setLineItems([newItem('Premium Matcha', 1, 0), newItem('Shipping', 1, 0)])
+      setSavedPdfUrl(publicUrl)
+      toast.success(`Invoice ${invoiceNumber} saved!`)
     } catch (err) {
       console.error(err)
       toast.error(err.message || 'Failed to save invoice')
@@ -238,8 +280,32 @@ export default function InvoiceGenerator() {
             <PartnerSearch
               partners={partners}
               selectedPartner={selectedPartner}
-              onSelect={p => p ? selectPartner(p) : setSelectedPartner(null)}
+              onSelect={p => {
+                if (p) selectPartner(p)
+                else { setSelectedPartner(null); setBillTo({ name: '', address: '', contact: '', email: '' }) }
+              }}
             />
+          </div>
+
+          {/* Bill To — editable */}
+          <div className="border-t border-gray-100 pt-4 space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bill To</p>
+            <div>
+              <label className="label">Business Name</label>
+              <input className="input" value={billTo.name} onChange={e => setBillTo(b => ({ ...b, name: e.target.value }))} placeholder="Cafe name" />
+            </div>
+            <div>
+              <label className="label">Contact Name</label>
+              <input className="input" value={billTo.contact} onChange={e => setBillTo(b => ({ ...b, contact: e.target.value }))} placeholder="First name" />
+            </div>
+            <div>
+              <label className="label">Address</label>
+              <textarea className="input resize-none" rows={2} value={billTo.address} onChange={e => setBillTo(b => ({ ...b, address: e.target.value }))} placeholder="Full address" />
+            </div>
+            <div>
+              <label className="label">Email (for sending invoice)</label>
+              <input type="email" className="input" value={billTo.email} onChange={e => setBillTo(b => ({ ...b, email: e.target.value }))} placeholder="cafe@example.com" />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -314,14 +380,43 @@ export default function InvoiceGenerator() {
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary w-full justify-center py-3 text-base"
-        >
-          <Save size={16} />
-          {saving ? 'Saving invoice…' : 'Save Invoice & Generate PDF'}
-        </button>
+        {!savedPdfUrl ? (
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary w-full justify-center py-3 text-base"
+          >
+            <Save size={16} />
+            {saving ? 'Saving invoice…' : 'Save Invoice & Generate PDF'}
+          </button>
+        ) : (
+          <div className="card p-4 space-y-3 border-[#3D6034] border">
+            <p className="text-sm font-semibold text-[#3D6034] text-center">✓ Invoice saved!</p>
+            <div className="grid grid-cols-1 gap-2">
+              <button
+                onClick={openGmail}
+                className="btn-primary w-full justify-center gap-2"
+              >
+                <Mail size={15} />
+                Email via Gmail
+              </button>
+              <a
+                href={savedPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary w-full justify-center text-sm"
+              >
+                View / Download PDF
+              </a>
+              <button
+                onClick={resetForm}
+                className="w-full text-center text-sm text-gray-400 hover:text-gray-700 py-1.5"
+              >
+                + Create another invoice
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right panel — preview */}
@@ -335,6 +430,7 @@ export default function InvoiceGenerator() {
             invoiceNumber={invoiceNumber}
             invoiceDate={invoiceDate}
             partner={selectedPartner}
+            billTo={billTo}
             lineItems={lineItems}
             subtotal={subtotal}
             total={total}
@@ -346,7 +442,7 @@ export default function InvoiceGenerator() {
 }
 
 const InvoicePreview = React.forwardRef(function InvoicePreview(
-  { invoiceNumber, invoiceDate, partner, lineItems, subtotal, total },
+  { invoiceNumber, invoiceDate, partner, billTo, lineItems, subtotal, total },
   ref
 ) {
   function fmtDate(d) {
@@ -394,9 +490,10 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
         </div>
         <div>
           <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>BILL TO</div>
-          <div style={{ fontWeight: 600 }}>{partner?.name || '—'}</div>
-          <div style={{ color: '#6b7280', marginTop: '2px' }}>{partner?.address || ''}</div>
-          <div style={{ color: '#6b7280' }}>{partner?.contact_name || ''}</div>
+          <div style={{ fontWeight: 600 }}>{billTo?.name || partner?.name || '—'}</div>
+          {billTo?.address && <div style={{ color: '#6b7280', marginTop: '2px', whiteSpace: 'pre-line' }}>{billTo.address}</div>}
+          {billTo?.contact && <div style={{ color: '#6b7280', marginTop: '2px' }}>{billTo.contact}</div>}
+          {billTo?.email && <div style={{ color: '#6b7280' }}>{billTo.email}</div>}
         </div>
       </div>
 
