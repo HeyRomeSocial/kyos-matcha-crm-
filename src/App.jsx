@@ -10,6 +10,10 @@ import InvoiceGenerator from './pages/InvoiceGenerator'
 import OrdersLog from './pages/OrdersLog'
 import Tasks from './pages/Tasks'
 import Goals from './pages/Goals'
+import Campaigns from './pages/marketing/Campaigns'
+import Outreach from './pages/marketing/Outreach'
+import Team from './pages/workspace/Team'
+import BrandAssets from './pages/workspace/BrandAssets'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ session, children }) {
@@ -54,6 +58,11 @@ export default function App() {
         <Route path="orders" element={<OrdersLog />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="goals" element={<Goals />} />
+        <Route path="marketing/campaigns" element={<Campaigns />} />
+        <Route path="marketing/outreach" element={<Outreach />} />
+        <Route path="workspace/team" element={<Team />} />
+        <Route path="workspace/brand" element={<BrandAssets />} />
+        <Route path="workspace/settings" element={<Settings />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
