@@ -8,7 +8,7 @@ import {
   CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
-import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -55,14 +55,18 @@ export default function Dashboard() {
   }, [])
 
   const activePartners = partners.filter(p => p.status === 'active').length
-  const totalKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => {
-    if (li.desc?.toLowerCase().includes('matcha')) return a + (li.qty || 0)
-    return a
-  }, 0), 0)
-  const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0)
-  const outstanding = orders.filter(o => getOrderStatus(o) !== 'paid').reduce((s, o) => s + (o.total || 0), 0)
 
-  // Monthly revenue for chart (last 6 months)
+  // All-time totals — pulled from partners table (includes historical imported data)
+  const totalKgAllTime = partners.reduce((s, p) => s + (Number(p.total_kg) || 0), 0)
+  const totalRevenueAllTime = partners.reduce((s, p) => s + (Number(p.total_spent) || 0), 0)
+  const totalOrdersAllTime = partners.reduce((s, p) => s + (Number(p.total_orders) || 0), 0)
+
+  // Outstanding = unpaid/overdue invoices in CRM orders only
+  const outstanding = orders
+    .filter(o => getOrderStatus(o) !== 'paid')
+    .reduce((s, o) => s + (o.total || 0), 0)
+
+  // Monthly revenue chart — from CRM orders (invoiced through this system)
   const months = Array.from({ length: 6 }, (_, i) => {
     const d = subMonths(new Date(), 5 - i)
     return {
@@ -99,7 +103,6 @@ export default function Dashboard() {
   }
 
   // Upcoming reorders (next 14 days)
-  const today = format(new Date(), 'yyyy-MM-dd')
   const in14 = format(new Date(Date.now() + 14 * 86400000), 'yyyy-MM-dd')
   const upcoming = partners
     .filter(p => p.next_expected_order && p.next_expected_order <= in14 && p.status === 'active')
@@ -119,22 +122,48 @@ export default function Dashboard() {
     <div className="space-y-6 max-w-7xl">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Overview of your partner accounts and orders</p>
+        <p className="text-sm text-gray-500 mt-0.5">All-time overview across all cafe partners</p>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — all sourced from partners table for historical accuracy */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <KpiCard label="Active Partners" value={activePartners} icon={Users} />
-        <KpiCard label="Total KG Supplied" value={`${totalKg.toFixed(1)}kg`} icon={Package} />
-        <KpiCard label="Revenue Invoiced" value={formatCurrency(totalRevenue)} icon={TrendingUp} />
-        <KpiCard label="Outstanding" value={formatCurrency(outstanding)} icon={AlertCircle} sub="unpaid + overdue" />
-        <KpiCard label="Total Orders" value={orders.length} icon={ShoppingBag} />
+        <KpiCard
+          label="Active Cafes"
+          value={activePartners}
+          icon={Users}
+          sub={`${partners.length} total`}
+        />
+        <KpiCard
+          label="Total KG Supplied"
+          value={`${totalKgAllTime.toFixed(1)}kg`}
+          icon={Package}
+          sub="all time"
+        />
+        <KpiCard
+          label="Total Revenue"
+          value={formatCurrency(totalRevenueAllTime)}
+          icon={TrendingUp}
+          sub="all time"
+        />
+        <KpiCard
+          label="Outstanding"
+          value={formatCurrency(outstanding)}
+          icon={AlertCircle}
+          sub="unpaid + overdue"
+        />
+        <KpiCard
+          label="Total Orders"
+          value={totalOrdersAllTime}
+          icon={ShoppingBag}
+          sub="all time"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart */}
         <div className="card p-5 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Monthly Revenue — Last 6 Months</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">Monthly Revenue — Last 6 Months</h2>
+          <p className="text-xs text-gray-400 mb-4">Based on invoices created in this CRM</p>
           <div className="h-56">
             <Bar data={chartData} options={chartOptions} />
           </div>
@@ -172,38 +201,74 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent orders */}
-      <div className="card">
-        <div className="p-5 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Recent Orders</h2>
-        </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-100">
-              {['Invoice', 'Partner', 'Date', 'Total', 'Status'].map(h => (
-                <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {recentOrders.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400">No orders yet</td>
+      {/* Top cafes by revenue */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card">
+          <div className="p-5 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">Top Cafes by Revenue</h2>
+            <p className="text-xs text-gray-400 mt-0.5">All time</p>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Cafe', 'Total KG', 'Total Spent', 'Orders'].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+                ))}
               </tr>
-            ) : recentOrders.map(order => {
-              const status = getOrderStatus(order)
-              return (
-                <tr key={order.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
-                  <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
-                  <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.date)}</td>
-                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
-                  <td className="px-5 py-3"><StatusBadge status={status} /></td>
+            </thead>
+            <tbody>
+              {[...partners]
+                .filter(p => p.total_spent > 0)
+                .sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0))
+                .slice(0, 8)
+                .map(p => (
+                  <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer"
+                    onClick={() => navigate(`/partners/${p.id}`)}>
+                    <td className="px-5 py-3 text-sm font-medium text-gray-900">{p.name}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600">{Number(p.total_kg || 0).toFixed(1)}kg</td>
+                    <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{formatCurrency(p.total_spent)}</td>
+                    <td className="px-5 py-3 text-sm text-gray-500">{p.total_orders || 0}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Recent CRM orders */}
+        <div className="card">
+          <div className="p-5 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">Recent Invoices</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Created in this CRM</p>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Invoice', 'Cafe', 'Total', 'Status'].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-400">
+                    No invoices yet — create one in New Invoice
+                  </td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              ) : recentOrders.map(order => {
+                const status = getOrderStatus(order)
+                return (
+                  <tr key={order.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                    <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
+                    <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
+                    <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
+                    <td className="px-5 py-3"><StatusBadge status={status} /></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
