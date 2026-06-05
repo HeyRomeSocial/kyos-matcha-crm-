@@ -234,74 +234,110 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top cafes by revenue */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <div className="p-5 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">Top Cafes by Revenue</h2>
-            <p className="text-xs text-gray-400 mt-0.5">All time</p>
+      {/* Revenue breakdown — all cafes */}
+      <div className="card">
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">Revenue by Cafe — All Time</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Total amount spent by each cafe partner · {formatCurrency(totalRevenueAllTime)} combined</p>
           </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100">
-                {['Cafe', 'Total KG', 'Total Spent', 'Orders'].map(h => (
-                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[...partners]
-                .filter(p => p.total_spent > 0)
-                .sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0))
-                .slice(0, 8)
-                .map(p => (
-                  <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer"
-                    onClick={() => navigate(`/partners/${p.id}`)}>
-                    <td className="px-5 py-3 text-sm font-medium text-gray-900">{p.name}</td>
-                    <td className="px-5 py-3 text-sm text-gray-600">{Number(p.total_kg || 0).toFixed(1)}kg</td>
-                    <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{formatCurrency(p.total_spent)}</td>
-                    <td className="px-5 py-3 text-sm text-gray-500">{p.total_orders || 0}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+          <div className="flex items-center gap-4 text-xs text-gray-400">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#3D6034] inline-block" /> Spent</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#EEF3EC] border border-[#b3d0ab] inline-block" /> KG</span>
+          </div>
         </div>
+        <div className="divide-y divide-gray-50 max-h-[520px] overflow-y-auto">
+          {[...partners]
+            .filter(p => (p.total_spent || 0) > 0 || (p.total_kg || 0) > 0)
+            .sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0))
+            .map((p, idx) => {
+              const pct = totalRevenueAllTime > 0 ? ((p.total_spent || 0) / totalRevenueAllTime) * 100 : 0
+              return (
+                <div
+                  key={p.id}
+                  className="px-5 py-3.5 hover:bg-gray-50/60 cursor-pointer transition-colors"
+                  onClick={() => navigate(`/partners/${p.id}`)}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Rank */}
+                    <span className="text-xs font-medium text-gray-300 w-5 text-right flex-shrink-0">#{idx + 1}</span>
+                    {/* Name + bar */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-900 truncate">{p.name}</span>
+                        <div className="flex items-center gap-4 ml-4 flex-shrink-0">
+                          <span className="text-xs text-gray-400">{Number(p.total_kg || 0).toFixed(1)}kg</span>
+                          <span className="text-xs text-gray-400">{p.total_orders || 0} orders</span>
+                          <span className="text-sm font-semibold text-[#3D6034] w-24 text-right">{formatCurrency(p.total_spent || 0)}</span>
+                        </div>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#3D6034] rounded-full transition-all"
+                          style={{ width: `${Math.max(pct, 0.5)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+        </div>
+        {/* Summary footer */}
+        <div className="px-5 py-4 border-t border-gray-100 bg-[#EEF3EC]/40 flex items-center justify-between">
+          <span className="text-xs text-gray-500">{partners.filter(p => (p.total_spent || 0) > 0).length} cafes with revenue</span>
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Total KG</p>
+              <p className="text-sm font-bold text-gray-900">{totalKgAllTime.toFixed(1)}kg</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Total Revenue</p>
+              <p className="text-sm font-bold text-[#3D6034]">{formatCurrency(totalRevenueAllTime)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-400">Total Orders</p>
+              <p className="text-sm font-bold text-gray-900">{totalOrdersAllTime}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Recent CRM orders */}
-        <div className="card">
-          <div className="p-5 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">Recent Invoices</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Created in this CRM</p>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100">
-                {['Invoice', 'Cafe', 'Total', 'Status'].map(h => (
-                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-400">
-                    No invoices yet — create one in New Invoice
-                  </td>
-                </tr>
-              ) : recentOrders.map(order => {
-                const status = getOrderStatus(order)
-                return (
-                  <tr key={order.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
-                    <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
-                    <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
-                    <td className="px-5 py-3"><StatusBadge status={status} /></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      {/* Recent invoices */}
+      <div className="card">
+        <div className="p-5 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">Recent Invoices</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Created in this CRM</p>
         </div>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {['Invoice', 'Cafe', 'Total', 'Status'].map(h => (
+                <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {recentOrders.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-400">
+                  No invoices yet — create one in New Invoice
+                </td>
+              </tr>
+            ) : recentOrders.map(order => {
+              const status = getOrderStatus(order)
+              return (
+                <tr key={order.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                  <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
+                  <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
+                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
+                  <td className="px-5 py-3"><StatusBadge status={status} /></td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )
