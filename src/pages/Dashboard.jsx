@@ -56,9 +56,9 @@ export default function Dashboard() {
 
   const activePartners = partners.filter(p => p.status === 'active').length
 
-  // All-time totals — pulled from partners table (includes historical imported data)
+  // All-time totals — KG × price_per_kg for accurate revenue
   const totalKgAllTime = partners.reduce((s, p) => s + (Number(p.total_kg) || 0), 0)
-  const totalRevenueAllTime = partners.reduce((s, p) => s + (Number(p.total_spent) || 0), 0)
+  const totalRevenueAllTime = partners.reduce((s, p) => s + (Number(p.total_kg) || 0) * (Number(p.price_per_kg) || 0), 0)
   const totalOrdersAllTime = partners.reduce((s, p) => s + (Number(p.total_orders) || 0), 0)
 
   // Outstanding = unpaid/overdue invoices in CRM orders only
@@ -234,73 +234,76 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Revenue breakdown — all cafes */}
-      <div className="card">
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-700">Revenue by Cafe — All Time</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Total amount spent by each cafe partner · {formatCurrency(totalRevenueAllTime)} combined</p>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-gray-400">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#3D6034] inline-block" /> Spent</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#EEF3EC] border border-[#b3d0ab] inline-block" /> KG</span>
-          </div>
+      {/* Revenue by cafe — all time */}
+      <div className="card overflow-hidden">
+        <div className="p-5 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">All-Time Revenue by Cafe</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Total KG ordered × price per KG agreed with each cafe</p>
         </div>
-        <div className="divide-y divide-gray-50 max-h-[520px] overflow-y-auto">
-          {[...partners]
-            .filter(p => (p.total_spent || 0) > 0 || (p.total_kg || 0) > 0)
-            .sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0))
-            .map((p, idx) => {
-              const pct = totalRevenueAllTime > 0 ? ((p.total_spent || 0) / totalRevenueAllTime) * 100 : 0
-              return (
-                <div
-                  key={p.id}
-                  className="px-5 py-3.5 hover:bg-gray-50/60 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/partners/${p.id}`)}
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Rank */}
-                    <span className="text-xs font-medium text-gray-300 w-5 text-right flex-shrink-0">#{idx + 1}</span>
-                    {/* Name + bar */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-900 truncate">{p.name}</span>
-                        <div className="flex items-center gap-4 ml-4 flex-shrink-0">
-                          <span className="text-xs text-gray-400">{Number(p.total_kg || 0).toFixed(1)}kg</span>
-                          <span className="text-xs text-gray-400">{p.total_orders || 0} orders</span>
-                          <span className="text-sm font-semibold text-[#3D6034] w-24 text-right">{formatCurrency(p.total_spent || 0)}</span>
-                        </div>
-                      </div>
-                      {/* Progress bar */}
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#3D6034] rounded-full transition-all"
-                          style={{ width: `${Math.max(pct, 0.5)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-        </div>
-        {/* Summary footer */}
-        <div className="px-5 py-4 border-t border-gray-100 bg-[#EEF3EC]/40 flex items-center justify-between">
-          <span className="text-xs text-gray-500">{partners.filter(p => (p.total_spent || 0) > 0).length} cafes with revenue</span>
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Total KG</p>
-              <p className="text-sm font-bold text-gray-900">{totalKgAllTime.toFixed(1)}kg</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Total Revenue</p>
-              <p className="text-sm font-bold text-[#3D6034]">{formatCurrency(totalRevenueAllTime)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400">Total Orders</p>
-              <p className="text-sm font-bold text-gray-900">{totalOrdersAllTime}</p>
-            </div>
-          </div>
+        <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
+          <table className="w-full">
+            <thead className="sticky top-0 bg-white z-10">
+              <tr className="border-b border-gray-100">
+                <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">#</th>
+                <th className="text-left text-xs font-medium text-gray-400 px-5 py-3">Cafe</th>
+                <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Total KG</th>
+                <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Price / KG</th>
+                <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Orders</th>
+                <th className="text-right text-xs font-medium text-gray-400 px-5 py-3">Total Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...partners]
+                .filter(p => (p.total_kg || 0) > 0 && (p.price_per_kg || 0) > 0)
+                .sort((a, b) => {
+                  const ra = (a.total_kg || 0) * (a.price_per_kg || 0)
+                  const rb = (b.total_kg || 0) * (b.price_per_kg || 0)
+                  return rb - ra
+                })
+                .map((p, idx) => {
+                  const revenue = (p.total_kg || 0) * (p.price_per_kg || 0)
+                  return (
+                    <tr
+                      key={p.id}
+                      className="border-b border-gray-50 last:border-0 hover:bg-[#EEF3EC]/40 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/partners/${p.id}`)}
+                    >
+                      <td className="px-5 py-3 text-xs text-gray-300 font-medium">{idx + 1}</td>
+                      <td className="px-5 py-3">
+                        <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                        {p.contact_name && <p className="text-xs text-gray-400">{p.contact_name}</p>}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-700 text-right font-medium">{Number(p.total_kg).toFixed(1)}kg</td>
+                      <td className="px-5 py-3 text-sm text-gray-500 text-right">{formatCurrency(p.price_per_kg)}</td>
+                      <td className="px-5 py-3 text-sm text-gray-500 text-right">{p.total_orders || 0}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className="text-sm font-bold text-[#3D6034]">{formatCurrency(revenue)}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+            </tbody>
+            {/* Grand total row */}
+            <tfoot>
+              <tr className="bg-[#EEF3EC] border-t-2 border-[#b3d0ab]">
+                <td className="px-5 py-4" colSpan={2}>
+                  <span className="text-sm font-bold text-[#3D6034]">Total — All Cafes</span>
+                  <span className="text-xs text-[#3D6034]/60 ml-2">{partners.filter(p => (p.total_kg || 0) > 0).length} cafes</span>
+                </td>
+                <td className="px-5 py-4 text-right text-sm font-bold text-gray-900">
+                  {totalKgAllTime.toFixed(1)}kg
+                </td>
+                <td className="px-5 py-4 text-right text-xs text-gray-400">avg {formatCurrency(
+                  partners.filter(p => p.price_per_kg).reduce((s, p) => s + p.price_per_kg, 0) /
+                  (partners.filter(p => p.price_per_kg).length || 1)
+                )}/kg</td>
+                <td className="px-5 py-4 text-right text-sm font-bold text-gray-900">{totalOrdersAllTime}</td>
+                <td className="px-5 py-4 text-right text-sm font-bold text-[#3D6034]">
+                  {formatCurrency(partners.reduce((s, p) => s + (p.total_kg || 0) * (p.price_per_kg || 0), 0))}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
 
