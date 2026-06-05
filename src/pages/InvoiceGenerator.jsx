@@ -459,7 +459,7 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
 
       {/* Footer */}
       <div style={{ color: '#9ca3af', fontSize: '10px', textAlign: 'center', borderTop: '1px solid #f3f4f6', paddingTop: '20px' }}>
-        Thank you for your order. Payment due within 14 days.
+        Thank you for your business · kyosmatcha.com · partners@kyosmatcha.com
       </div>
     </div>
   )
