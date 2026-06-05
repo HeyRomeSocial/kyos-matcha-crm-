@@ -1,0 +1,159 @@
+import React, { useEffect, useState, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
+import { Search, Download, CheckCircle, XCircle } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+const FILTERS = ['all', 'paid', 'unpaid', 'overdue']
+
+function StatusBadge({ status }) {
+  if (status === 'paid') return <span className="badge-paid">Paid</span>
+  if (status === 'overdue') return <span className="badge-overdue">Overdue</span>
+  return <span className="badge-unpaid">Unpaid</span>
+}
+
+export default function OrdersLog() {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('orders')
+      .select('*')
+      .order('date', { ascending: false })
+    setOrders(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    load()
+    // Realtime subscription
+    const channel = supabase
+      .channel('orders_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => load())
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [load])
+
+  async function togglePaid(order) {
+    const newStatus = order.status === 'paid' ? 'unpaid' : 'paid'
+    const { error } = await supabase.from('orders').update({
+      status: newStatus,
+      paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+    }).eq('id', order.id)
+    if (error) toast.error(error.message)
+    else toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Marked as unpaid')
+  }
+
+  const filtered = orders.filter(o => {
+    const status = getOrderStatus(o)
+    const matchFilter = filter === 'all' || status === filter
+    const matchSearch = !search
+      || o.invoice_number?.toLowerCase().includes(search.toLowerCase())
+      || o.partner_name?.toLowerCase().includes(search.toLowerCase())
+    return matchFilter && matchSearch
+  })
+
+  return (
+    <div className="space-y-6 max-w-7xl">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Orders</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{orders.length} invoices total</p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            className="input pl-8 w-64"
+            placeholder="Search by invoice # or partner…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${
+                filter === f
+                  ? 'bg-[#3D6034] text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Invoice #', 'Partner', 'Date', 'Total', 'Status', 'PDF', 'Actions'].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-gray-400">No orders found</td></tr>
+              ) : filtered.map(order => {
+                const status = getOrderStatus(order)
+                const isOverdue = status === 'overdue'
+                return (
+                  <tr
+                    key={order.id}
+                    className={`border-b border-gray-50 last:border-0 ${isOverdue ? 'bg-red-50/40' : 'hover:bg-gray-50/50'}`}
+                  >
+                    <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
+                    <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
+                    <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.date)}</td>
+                    <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
+                    <td className="px-5 py-3"><StatusBadge status={status} /></td>
+                    <td className="px-5 py-3">
+                      {order.invoice_pdf_url ? (
+                        <a
+                          href={order.invoice_pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-[#3D6034] hover:underline"
+                        >
+                          <Download size={12} /> PDF
+                        </a>
+                      ) : <span className="text-xs text-gray-300">—</span>}
+                    </td>
+                    <td className="px-5 py-3">
+                      <button
+                        onClick={() => togglePaid(order)}
+                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
+                          order.status === 'paid'
+                            ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                            : 'text-[#3D6034] bg-[#EEF3EC] hover:bg-[#d8e8d4]'
+                        }`}
+                      >
+                        {order.status === 'paid'
+                          ? <><XCircle size={12} /> Mark Unpaid</>
+                          : <><CheckCircle size={12} /> Mark Paid</>
+                        }
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

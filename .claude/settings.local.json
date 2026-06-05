@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /opt/homebrew/bin/ 2>/dev/null | grep -E \"node|npm\" | head -10; ls /usr/local/bin/ 2>/dev/null | grep -E \"node|npm\" | head -10)",
+      "Bash(brew --prefix)",
+      "Bash(command -v brew)",
+      "Read(//Users/romeabalain/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 install *)"
+    ]
+  }
+}
