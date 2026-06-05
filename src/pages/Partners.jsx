@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, reorderUrgency } from '../lib/utils'
 import PartnerModal from '../components/PartnerModal'
-import { Plus, Search, Pencil, ExternalLink, Trash2 } from 'lucide-react'
+import { Plus, Search, Pencil, ExternalLink, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUSES = ['all', 'prospect', 'sample_sent', 'active', 'inactive']
@@ -52,6 +52,20 @@ export default function Partners() {
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
+
+  function handleSort(key) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  function SortIcon({ col }) {
+    if (sortKey !== col) return <ChevronsUpDown size={12} className="text-gray-300 ml-1 inline" />
+    return sortDir === 'asc'
+      ? <ChevronUp size={12} className="text-[#3D6034] ml-1 inline" />
+      : <ChevronDown size={12} className="text-[#3D6034] ml-1 inline" />
+  }
 
   async function load() {
     const { data } = await supabase.from('partners').select('*').order('name')
@@ -68,12 +82,30 @@ export default function Partners() {
     setConfirmDelete(null)
   }
 
-  const filtered = partners.filter(p => {
-    const matchStatus = filter === 'all' || p.status === filter
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.contact_name?.toLowerCase().includes(search.toLowerCase())
-    return matchStatus && matchSearch
-  })
+  const filtered = useMemo(() => {
+    const list = partners.filter(p => {
+      const matchStatus = filter === 'all' || p.status === filter
+      const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.contact_name?.toLowerCase().includes(search.toLowerCase())
+      return matchStatus && matchSearch
+    })
+    return [...list].sort((a, b) => {
+      let av, bv
+      switch (sortKey) {
+        case 'name':         av = a.name?.toLowerCase(); bv = b.name?.toLowerCase(); break
+        case 'total_orders': av = a.total_orders || 0;   bv = b.total_orders || 0;   break
+        case 'total_kg':     av = a.total_kg || 0;       bv = b.total_kg || 0;       break
+        case 'total_spent':  av = a.total_spent || 0;    bv = b.total_spent || 0;    break
+        case 'last_order':   av = a.last_order_date || ''; bv = b.last_order_date || ''; break
+        case 'next_order':   av = a.next_expected_order || ''; bv = b.next_expected_order || ''; break
+        case 'price_per_kg': av = a.price_per_kg || 0;   bv = b.price_per_kg || 0;  break
+        default:             av = a.name?.toLowerCase(); bv = b.name?.toLowerCase()
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [partners, filter, search, sortKey, sortDir])
 
   function NextOrderCell({ partner }) {
     const urgency = reorderUrgency(partner.next_expected_order)
@@ -131,8 +163,27 @@ export default function Partners() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Name', 'Status', 'Contact', 'Price/KG', 'Total Orders', 'Total KG', 'Total Spent', 'Last Order', 'Next Order', ''].map(h => (
-                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-4 py-3 whitespace-nowrap">{h}</th>
+                {[
+                  { label: 'Name',         key: 'name' },
+                  { label: 'Status',       key: null },
+                  { label: 'Contact',      key: null },
+                  { label: 'Price/KG',     key: 'price_per_kg' },
+                  { label: 'Total Orders', key: 'total_orders' },
+                  { label: 'Total KG',     key: 'total_kg' },
+                  { label: 'Total Spent',  key: 'total_spent' },
+                  { label: 'Last Order',   key: 'last_order' },
+                  { label: 'Next Order',   key: 'next_order' },
+                  { label: '',             key: null },
+                ].map(({ label, key }) => (
+                  <th
+                    key={label}
+                    onClick={() => key && handleSort(key)}
+                    className={`text-left text-xs font-medium px-4 py-3 whitespace-nowrap select-none ${
+                      key ? 'cursor-pointer hover:text-gray-700 text-gray-400' : 'text-gray-400'
+                    } ${sortKey === key ? 'text-[#3D6034]' : ''}`}
+                  >
+                    {label}{key && <SortIcon col={key} />}
+                  </th>
                 ))}
               </tr>
             </thead>
