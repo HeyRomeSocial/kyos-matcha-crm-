@@ -8,7 +8,7 @@ import {
   CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { format, subMonths, startOfMonth, endOfMonth, parseISO, isPast } from 'date-fns'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
@@ -39,16 +39,23 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [partners, setPartners] = useState([])
   const [orders, setOrders] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [currentGoal, setCurrentGoal] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
-      const [{ data: p }, { data: o }] = await Promise.all([
+      const currentMonthStr = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+      const [{ data: p }, { data: o }, { data: t }, { data: g }] = await Promise.all([
         supabase.from('partners').select('*'),
         supabase.from('orders').select('*').order('date', { ascending: false }),
+        supabase.from('tasks').select('*').neq('status', 'done').order('due_date', { ascending: true }).limit(5),
+        supabase.from('goals').select('*').eq('month', currentMonthStr).single(),
       ])
       setPartners(p || [])
       setOrders(o || [])
+      setTasks(t || [])
+      setCurrentGoal(g || null)
       setLoading(false)
     }
     load()
@@ -66,11 +73,11 @@ export default function Dashboard() {
     .filter(o => getOrderStatus(o) !== 'paid')
     .reduce((s, o) => s + (o.total || 0), 0)
 
-  // Monthly revenue chart — from CRM orders (invoiced through this system)
-  const months = Array.from({ length: 6 }, (_, i) => {
-    const d = subMonths(new Date(), 5 - i)
+  // Monthly revenue chart — 12 months
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = subMonths(new Date(), 11 - i)
     return {
-      label: format(d, 'MMM'),
+      label: format(d, 'MMM yy'),
       start: format(startOfMonth(d), 'yyyy-MM-dd'),
       end: format(endOfMonth(d), 'yyyy-MM-dd'),
     }
@@ -193,9 +200,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart */}
+        {/* Chart — 12 months */}
         <div className="card p-5 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">Monthly Revenue — Last 6 Months</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">Monthly Revenue — Last 12 Months</h2>
           <p className="text-xs text-gray-400 mb-4">Based on invoices created in this CRM</p>
           <div className="h-56">
             <Bar data={chartData} options={chartOptions} />
@@ -226,6 +233,97 @@ export default function Dashboard() {
                     >
                       <Plus size={14} />
                     </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Goals + Tasks row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Current month goal */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700">🎯 {format(new Date(), 'MMMM')} Goals</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Current month targets</p>
+            </div>
+            <button onClick={() => navigate('/goals')} className="text-xs text-[#3D6034] hover:underline">View all →</button>
+          </div>
+          {currentGoal ? (
+            <div className="space-y-4">
+              {currentGoal.target_revenue > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Revenue</span>
+                    <span>{formatCurrency(orders.filter(o => o.date >= format(startOfMonth(new Date()),'yyyy-MM-dd')).reduce((s,o)=>s+(o.total||0),0))} / {formatCurrency(currentGoal.target_revenue)}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#3D6034] rounded-full" style={{ width: `${Math.min((orders.filter(o => o.date >= format(startOfMonth(new Date()),'yyyy-MM-dd')).reduce((s,o)=>s+(o.total||0),0) / currentGoal.target_revenue)*100,100)}%` }} />
+                  </div>
+                </div>
+              )}
+              {currentGoal.target_kg > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>KG Supplied</span>
+                    <span>— / {currentGoal.target_kg}kg</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#3D6034] rounded-full" style={{ width: '0%' }} />
+                  </div>
+                </div>
+              )}
+              {currentGoal.target_new_cafes > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>New Cafes</span>
+                    <span>— / {currentGoal.target_new_cafes}</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#3D6034] rounded-full" style={{ width: '0%' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-sm text-gray-400 mb-3">No goal set for this month</p>
+              <button onClick={() => navigate('/goals')} className="btn-primary mx-auto text-xs">Set a Goal</button>
+            </div>
+          )}
+        </div>
+
+        {/* Open tasks */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700">✅ Open Tasks</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Your team's pending items</p>
+            </div>
+            <button onClick={() => navigate('/tasks')} className="text-xs text-[#3D6034] hover:underline">View all →</button>
+          </div>
+          {tasks.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-gray-400 mb-3">No open tasks</p>
+              <button onClick={() => navigate('/tasks')} className="btn-primary mx-auto text-xs">Add a Task</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {tasks.map(t => {
+                const overdue = t.due_date && isPast(parseISO(t.due_date))
+                return (
+                  <div key={t.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${t.priority === 'high' ? 'bg-red-400' : t.priority === 'medium' ? 'bg-amber-400' : 'bg-gray-300'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900 truncate">{t.title}</p>
+                      <p className={`text-xs mt-0.5 ${overdue ? 'text-red-500' : 'text-gray-400'}`}>
+                        {overdue ? '⚠ Overdue · ' : ''}{t.due_date ? formatDate(t.due_date) : 'No due date'}
+                        {t.assigned_to ? ` · ${t.assigned_to}` : ''}
+                      </p>
+                    </div>
                   </div>
                 )
               })}

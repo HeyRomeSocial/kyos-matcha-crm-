@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
-  LayoutDashboard, Users, FileText, ClipboardList, Settings, LogOut, Menu, X
+  LayoutDashboard, Users, FileText, ClipboardList, Settings,
+  LogOut, Menu, X, CheckSquare, Target
 } from 'lucide-react'
 
 const nav = [
@@ -10,6 +11,8 @@ const nav = [
   { to: '/partners', label: 'Cafes', icon: Users },
   { to: '/invoice', label: 'New Invoice', icon: FileText },
   { to: '/orders', label: 'Orders', icon: ClipboardList },
+  { to: '/tasks', label: 'Tasks', icon: CheckSquare },
+  { to: '/goals', label: 'Goals', icon: Target },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

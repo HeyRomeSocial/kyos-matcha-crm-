@@ -8,6 +8,8 @@ import Partners from './pages/Partners'
 import PartnerDetail from './pages/PartnerDetail'
 import InvoiceGenerator from './pages/InvoiceGenerator'
 import OrdersLog from './pages/OrdersLog'
+import Tasks from './pages/Tasks'
+import Goals from './pages/Goals'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ session, children }) {
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="partners/:id" element={<PartnerDetail />} />
         <Route path="invoice" element={<InvoiceGenerator />} />
         <Route path="orders" element={<OrdersLog />} />
+        <Route path="tasks" element={<Tasks />} />
+        <Route path="goals" element={<Goals />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
