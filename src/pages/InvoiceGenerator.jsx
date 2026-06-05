@@ -2,11 +2,84 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, calcNextOrder } from '../lib/utils'
-import { Plus, Trash2, Save } from 'lucide-react'
+import { Plus, Trash2, Save, Search, X } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+
+function PartnerSearch({ partners, selectedPartner, onSelect }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  const filtered = query.length > 0
+    ? partners.filter(p => p.name.toLowerCase().includes(query.toLowerCase()))
+    : partners
+
+  // Close on outside click
+  useEffect(() => {
+    function handle(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  function handleSelect(partner) {
+    onSelect(partner)
+    setQuery('')
+    setOpen(false)
+  }
+
+  function handleClear() {
+    onSelect(null)
+    setQuery('')
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      {selectedPartner ? (
+        <div className="flex items-center justify-between px-3 py-2 border border-[#3D6034] rounded-lg bg-[#EEF3EC]">
+          <span className="text-sm font-medium text-[#3D6034]">{selectedPartner.name}</span>
+          <button onClick={handleClear} className="text-[#3D6034] hover:text-[#2E4A27] ml-2">
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              className="input pl-8"
+              placeholder="Type to search cafes…"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setOpen(true) }}
+              onFocus={() => setOpen(true)}
+              autoComplete="off"
+            />
+          </div>
+          {open && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <div className="px-3 py-3 text-sm text-gray-400">No cafes found</div>
+              ) : filtered.map(p => (
+                <button
+                  key={p.id}
+                  onMouseDown={() => handleSelect(p)}
+                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-[#EEF3EC] hover:text-[#3D6034] transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <span className="font-medium">{p.name}</span>
+                  {p.contact_name && <span className="text-gray-400 ml-2 text-xs">· {p.contact_name}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 
 const FROM_ADDRESS = {
   name: 'Kyos Matcha',
@@ -162,18 +235,11 @@ export default function InvoiceGenerator() {
         <div className="card p-5 space-y-4">
           <div>
             <label className="label">Partner *</label>
-            <select
-              className="input"
-              value={selectedPartner?.id || ''}
-              onChange={e => {
-                const p = partners.find(x => x.id === e.target.value)
-                if (p) selectPartner(p)
-                else setSelectedPartner(null)
-              }}
-            >
-              <option value="">Select a partner…</option>
-              {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <PartnerSearch
+              partners={partners}
+              selectedPartner={selectedPartner}
+              onSelect={p => p ? selectPartner(p) : setSelectedPartner(null)}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
