@@ -7,7 +7,7 @@ import {
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/partners', label: 'Partners', icon: Users },
+  { to: '/partners', label: 'Cafes', icon: Users },
   { to: '/invoice', label: 'New Invoice', icon: FileText },
   { to: '/orders', label: 'Orders', icon: ClipboardList },
   { to: '/settings', label: 'Settings', icon: Settings },

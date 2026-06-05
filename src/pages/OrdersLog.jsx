@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FILTERS = ['all', 'paid', 'unpaid', 'overdue']
@@ -12,11 +12,31 @@ function StatusBadge({ status }) {
   return <span className="badge-unpaid">Unpaid</span>
 }
 
+function ConfirmDialog({ message, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+        <p className="text-sm text-gray-700 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button onClick={onCancel} className="btn-secondary">Cancel</button>
+          <button
+            onClick={onConfirm}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function OrdersLog() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -29,7 +49,6 @@ export default function OrdersLog() {
 
   useEffect(() => {
     load()
-    // Realtime subscription
     const channel = supabase
       .channel('orders_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => load())
@@ -45,6 +64,18 @@ export default function OrdersLog() {
     }).eq('id', order.id)
     if (error) toast.error(error.message)
     else toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Marked as unpaid')
+  }
+
+  async function deleteOrder(order) {
+    // Also delete PDF from storage if it exists
+    if (order.invoice_pdf_url) {
+      const filename = `${order.invoice_number}.pdf`
+      await supabase.storage.from('invoices').remove([filename])
+    }
+    const { error } = await supabase.from('orders').delete().eq('id', order.id)
+    if (error) toast.error(error.message)
+    else toast.success(`${order.invoice_number} deleted`)
+    setConfirmDelete(null)
   }
 
   const filtered = orders.filter(o => {
@@ -97,16 +128,16 @@ export default function OrdersLog() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Invoice #', 'Partner', 'Date', 'Total', 'Status', 'PDF', 'Actions'].map(h => (
+                {['Invoice #', 'Partner', 'Date', 'Total', 'Status', 'PDF', 'Actions', ''].map(h => (
                   <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-gray-400">No orders found</td></tr>
+                <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-gray-400">No orders found</td></tr>
               ) : filtered.map(order => {
                 const status = getOrderStatus(order)
                 const isOverdue = status === 'overdue'
@@ -147,6 +178,15 @@ export default function OrdersLog() {
                         }
                       </button>
                     </td>
+                    <td className="px-5 py-3">
+                      <button
+                        onClick={() => setConfirmDelete(order)}
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Delete invoice"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
@@ -154,6 +194,14 @@ export default function OrdersLog() {
           </table>
         </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message={`Are you sure you want to delete ${confirmDelete.invoice_number}? This cannot be undone.`}
+          onConfirm={() => deleteOrder(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
     </div>
   )
 }
