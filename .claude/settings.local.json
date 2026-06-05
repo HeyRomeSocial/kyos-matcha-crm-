@@ -10,7 +10,8 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git push *)",
-      "Bash(pbcopy)"
+      "Bash(pbcopy)",
+      "Bash(# Use a high quality matcha field from the web as placeholder, *)"
     ]
   }
 }

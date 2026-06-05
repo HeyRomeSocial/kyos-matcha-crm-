@@ -118,15 +118,54 @@ export default function Dashboard() {
     )
   }
 
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
   return (
     <div className="space-y-6 max-w-7xl">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">All-time overview across all cafe partners</p>
+
+      {/* Hero Banner */}
+      <div className="relative w-full rounded-2xl overflow-hidden" style={{ height: '220px' }}>
+        {/* Background photo */}
+        <img
+          src="/matcha-hero.jpg"
+          alt="Matcha fields"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: 'center 60%' }}
+        />
+        {/* Dark green overlay */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(30,50,22,0.82) 0%, rgba(30,50,22,0.55) 60%, rgba(30,50,22,0.25) 100%)' }} />
+
+        {/* Content */}
+        <div className="absolute inset-0 flex items-center px-10">
+          <div className="flex-1">
+            <img src="/logo.png" alt="Kyos Matcha" className="h-9 w-auto mb-4 brightness-0 invert" />
+            <p className="text-white/70 text-sm">{today}</p>
+            <p className="text-white/90 text-sm mt-1">{activePartners} active cafes across the UK</p>
+          </div>
+
+          {/* Stat pills */}
+          <div className="flex items-center gap-4">
+            <div className="text-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-4">
+              <p className="text-white/70 text-xs font-medium uppercase tracking-wide">Total KG</p>
+              <p className="text-white text-2xl font-bold mt-1">{totalKgAllTime.toFixed(0)}kg</p>
+              <p className="text-white/50 text-xs mt-0.5">supplied all time</p>
+            </div>
+            <div className="text-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-4">
+              <p className="text-white/70 text-xs font-medium uppercase tracking-wide">Revenue</p>
+              <p className="text-white text-2xl font-bold mt-1">{formatCurrency(totalRevenueAllTime)}</p>
+              <p className="text-white/50 text-xs mt-0.5">all time</p>
+            </div>
+            <div className="text-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-4">
+              <p className="text-white/70 text-xs font-medium uppercase tracking-wide">Orders</p>
+              <p className="text-white text-2xl font-bold mt-1">{totalOrdersAllTime}</p>
+              <p className="text-white/50 text-xs mt-0.5">all time</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* KPIs — all sourced from partners table for historical accuracy */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Active Cafes"
           value={activePartners}
@@ -150,12 +189,6 @@ export default function Dashboard() {
           value={formatCurrency(outstanding)}
           icon={AlertCircle}
           sub="unpaid + overdue"
-        />
-        <KpiCard
-          label="Total Orders"
-          value={totalOrdersAllTime}
-          icon={ShoppingBag}
-          sub="all time"
         />
       </div>
 
