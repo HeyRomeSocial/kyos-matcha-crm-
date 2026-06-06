@@ -113,12 +113,18 @@ export default function InvoiceGenerator() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: p }, { data: seq }] = await Promise.all([
+      const [{ data: p }, { data: existingOrders }] = await Promise.all([
         supabase.from('partners').select('*').eq('status', 'active').order('name'),
-        supabase.from('invoice_sequence').select('last_number').single(),
+        supabase.from('orders').select('invoice_number'),
       ])
       setPartners(p || [])
-      if (seq) setInvoiceNumber(`KM-${seq.last_number + 1}`)
+
+      // Calculate next invoice number from actual orders in DB — never duplicates
+      const usedNumbers = (existingOrders || [])
+        .map(o => parseInt(o.invoice_number?.replace('KM-', '') || '0'))
+        .filter(n => !isNaN(n))
+      const maxUsed = usedNumbers.length > 0 ? Math.max(...usedNumbers) : 169
+      setInvoiceNumber(`KM-${maxUsed + 1}`)
 
       // Pre-select partner from navigation state
       if (location.state?.partnerId && p) {
@@ -238,9 +244,9 @@ kyosmatcha.com`
       })
       if (orderError) throw orderError
 
-      // Increment invoice sequence
-      await supabase.from('invoice_sequence').update({ last_number: parseInt(invoiceNumber.replace('KM-', '')) })
-        .gt('last_number', 0)
+      // Sync invoice sequence to match actual last used number
+      const currentNum = parseInt(invoiceNumber.replace('KM-', ''))
+      await supabase.from('invoice_sequence').update({ last_number: currentNum }).gt('last_number', 0)
 
       // Update partner stats
       const newTotalOrders = (selectedPartner.total_orders || 0) + 1
