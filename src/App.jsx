@@ -12,6 +12,7 @@ import Tasks from './pages/Tasks'
 import Goals from './pages/Goals'
 import Campaigns from './pages/marketing/Campaigns'
 import Outreach from './pages/marketing/Outreach'
+import MapPage from './pages/marketing/Map'
 import Team from './pages/workspace/Team'
 import BrandAssets from './pages/workspace/BrandAssets'
 import Settings from './pages/Settings'
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="goals" element={<Goals />} />
         <Route path="marketing/campaigns" element={<Campaigns />} />
         <Route path="marketing/outreach" element={<Outreach />} />
+        <Route path="marketing/map" element={<MapPage />} />
         <Route path="workspace/team" element={<Team />} />
         <Route path="workspace/brand" element={<BrandAssets />} />
         <Route path="workspace/settings" element={<Settings />} />
