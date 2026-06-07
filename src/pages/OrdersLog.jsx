@@ -1,9 +1,56 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
+
+function PdfViewerModal({ order, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+      <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl" style={{ height: '92vh' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">{order.invoice_number} — {order.partner_name}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{order.invoice_pdf_url ? 'PDF Invoice' : 'No PDF available'}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {order.invoice_pdf_url && (
+              <a
+                href={order.invoice_pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="btn-secondary text-xs"
+              >
+                <Download size={13} /> Download
+              </a>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 p-4 bg-gray-100 rounded-b-2xl">
+          {order.invoice_pdf_url ? (
+            <iframe
+              src={order.invoice_pdf_url}
+              className="w-full h-full rounded-lg border border-gray-200"
+              title={`Invoice ${order.invoice_number}`}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <div className="text-center">
+                <p className="text-sm font-medium">No PDF available for this invoice</p>
+                <p className="text-xs mt-1">Edit and save the invoice to generate a PDF</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const FILTERS = ['all', 'paid', 'unpaid', 'overdue']
 
@@ -39,6 +86,7 @@ export default function OrdersLog() {
   const [search, setSearch] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [editOrder, setEditOrder] = useState(null)
+  const [viewOrder, setViewOrder] = useState(null)
   const [sortKey, setSortKey] = useState('date')
   const [sortDir, setSortDir] = useState('desc')
 
@@ -211,16 +259,27 @@ export default function OrdersLog() {
                     <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
                     <td className="px-5 py-3"><StatusBadge status={status} /></td>
                     <td className="px-5 py-3">
-                      {order.invoice_pdf_url ? (
-                        <a
-                          href={order.invoice_pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-[#3D6034] hover:underline"
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setViewOrder(order)}
+                          className="inline-flex items-center gap-1 text-xs text-[#3D6034] hover:underline font-medium"
+                          title="View PDF"
                         >
-                          <Download size={12} /> PDF
-                        </a>
-                      ) : <span className="text-xs text-gray-300">—</span>}
+                          <Eye size={13} /> View
+                        </button>
+                        {order.invoice_pdf_url && (
+                          <a
+                            href={order.invoice_pdf_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+                            title="Download PDF"
+                          >
+                            <Download size={12} />
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3">
                       <button
@@ -262,6 +321,10 @@ export default function OrdersLog() {
           </table>
         </div>
       </div>
+
+      {viewOrder && (
+        <PdfViewerModal order={viewOrder} onClose={() => setViewOrder(null)} />
+      )}
 
       {editOrder && (
         <EditInvoiceModal
