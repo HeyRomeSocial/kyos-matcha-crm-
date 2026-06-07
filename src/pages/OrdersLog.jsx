@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
+import EditInvoiceModal from '../components/EditInvoiceModal'
 
 const FILTERS = ['all', 'paid', 'unpaid', 'overdue']
 
@@ -37,6 +38,7 @@ export default function OrdersLog() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [editOrder, setEditOrder] = useState(null)
   const [sortKey, setSortKey] = useState('date')
   const [sortDir, setSortDir] = useState('desc')
 
@@ -237,6 +239,15 @@ export default function OrdersLog() {
                     </td>
                     <td className="px-5 py-3">
                       <button
+                        onClick={() => setEditOrder(order)}
+                        className="p-1.5 rounded-lg text-gray-300 hover:text-[#3D6034] hover:bg-[#EEF3EC] transition-colors"
+                        title="Edit invoice"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    </td>
+                    <td className="px-5 py-3">
+                      <button
                         onClick={() => setConfirmDelete(order)}
                         className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                         title="Delete invoice"
@@ -251,6 +262,14 @@ export default function OrdersLog() {
           </table>
         </div>
       </div>
+
+      {editOrder && (
+        <EditInvoiceModal
+          order={editOrder}
+          onClose={() => setEditOrder(null)}
+          onSaved={() => { setEditOrder(null); load() }}
+        />
+      )}
 
       {confirmDelete && (
         <ConfirmDialog
