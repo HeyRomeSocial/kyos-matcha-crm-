@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle, Trash2 } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const FILTERS = ['all', 'paid', 'unpaid', 'overdue']
@@ -37,6 +37,7 @@ export default function OrdersLog() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [sortDir, setSortDir] = useState('desc') // most recent first by default
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -78,14 +79,29 @@ export default function OrdersLog() {
     setConfirmDelete(null)
   }
 
-  const filtered = orders.filter(o => {
-    const status = getOrderStatus(o)
-    const matchFilter = filter === 'all' || status === filter
-    const matchSearch = !search
-      || o.invoice_number?.toLowerCase().includes(search.toLowerCase())
-      || o.partner_name?.toLowerCase().includes(search.toLowerCase())
-    return matchFilter && matchSearch
-  })
+  const filtered = useMemo(() => {
+    return orders
+      .filter(o => {
+        const status = getOrderStatus(o)
+        const matchFilter = filter === 'all' || status === filter
+        const matchSearch = !search
+          || o.invoice_number?.toLowerCase().includes(search.toLowerCase())
+          || o.partner_name?.toLowerCase().includes(search.toLowerCase())
+        return matchFilter && matchSearch
+      })
+      .sort((a, b) => {
+        const da = a.date || ''
+        const db = b.date || ''
+        return sortDir === 'desc' ? db.localeCompare(da) : da.localeCompare(db)
+      })
+  }, [orders, filter, search, sortDir])
+
+  const counts = {
+    all: orders.length,
+    paid: orders.filter(o => getOrderStatus(o) === 'paid').length,
+    unpaid: orders.filter(o => getOrderStatus(o) === 'unpaid').length,
+    overdue: orders.filter(o => getOrderStatus(o) === 'overdue').length,
+  }
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -116,10 +132,19 @@ export default function OrdersLog() {
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {f}
+              {f === 'all' ? `All (${counts.all})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${counts[f]})`}
             </button>
           ))}
         </div>
+        {/* Date sort toggle */}
+        <button
+          onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Date {sortDir === 'desc'
+            ? <><ChevronDown size={13} /> Newest first</>
+            : <><ChevronUp size={13} /> Oldest first</>}
+        </button>
       </div>
 
       {/* Table */}
