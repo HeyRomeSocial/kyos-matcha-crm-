@@ -88,7 +88,7 @@ const FROM_ADDRESS = {
 }
 
 const BANKING = {
-  accountName: 'KM WELLNESS LTD',
+  accountName: 'KM WELNESS LTD',
   sortCode: '04-00-05',
   accountNumber: '86383529',
 }
@@ -185,7 +185,7 @@ Invoice Total: £${total.toFixed(2)}
 Payment due within 14 days.
 
 Banking Details:
-Account Name: KM WELLNESS LTD
+Account Name: KM WELNESS LTD
 Sort Code: 04-00-05
 Account Number: 86383529
 

@@ -8,7 +8,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 const FROM_ADDRESS = { name: 'Kyos Matcha', line1: '30 Seagull Lane', line2: 'E16 1PY, London' }
-const BANKING = { accountName: 'KM WELLNESS LTD', sortCode: '04-00-05', accountNumber: '86383529' }
+const BANKING = { accountName: 'KM WELNESS LTD', sortCode: '04-00-05', accountNumber: '86383529' }
 
 function newItem(desc = '', qty = 1, price = 0) {
   return { id: Math.random().toString(36).slice(2), desc, qty, price }
@@ -160,7 +160,7 @@ export default function EditInvoiceModal({ order, onClose, onSaved }) {
     const to = billTo.email || ''
     const subject = encodeURIComponent(`Invoice ${order.invoice_number} — Kyos Matcha`)
     const body = encodeURIComponent(
-`Hi ${billTo.contact || billTo.name},\n\nPlease find your updated invoice ${order.invoice_number} from Kyos Matcha.\n\nDownload here:\n${savedPdfUrl}\n\nTotal: £${total.toFixed(2)}\nPayment due within 14 days.\n\nBanking Details:\nAccount Name: KM WELLNESS LTD\nSort Code: 04-00-05\nAccount Number: 86383529\n\nThank you for your business.\n\nKyos Matcha\npartners@kyosmatcha.com`
+`Hi ${billTo.contact || billTo.name},\n\nPlease find your updated invoice ${order.invoice_number} from Kyos Matcha.\n\nDownload here:\n${savedPdfUrl}\n\nTotal: £${total.toFixed(2)}\nPayment due within 14 days.\n\nBanking Details:\nAccount Name: KM WELNESS LTD\nSort Code: 04-00-05\nAccount Number: 86383529\n\nThank you for your business.\n\nKyos Matcha\npartners@kyosmatcha.com`
     )
     window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`, '_blank')
   }

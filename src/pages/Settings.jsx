@@ -11,7 +11,7 @@ export default function Settings() {
     line2: 'E16 1PY, London',
   })
   const [banking, setBanking] = useState({
-    accountName: 'KM WELLNESS LTD',
+    accountName: 'KM WELNESS LTD',
     sortCode: '04-00-05',
     accountNumber: '86383529',
   })
