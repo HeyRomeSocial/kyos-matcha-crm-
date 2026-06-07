@@ -145,11 +145,7 @@ export default function InvoiceGenerator() {
       email: partner.email || '',
     })
     const items = []
-    if (partner.projected_kg_month && partner.price_per_kg) {
-      items.push(newItem(`Premium Matcha — ${partner.projected_kg_month}kg`, partner.projected_kg_month, partner.price_per_kg))
-    } else {
-      items.push(newItem('Premium Matcha', 1, partner.price_per_kg || 0))
-    }
+    items.push(newItem('Premium Matcha', 1, partner.price_per_kg || 0))
     items.push(newItem('Shipping', 1, partner.shipping_fee || 0))
     setLineItems(items)
   }
