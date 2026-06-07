@@ -37,7 +37,18 @@ export default function OrdersLog() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [sortDir, setSortDir] = useState('desc') // most recent first by default
+  const [sortKey, setSortKey] = useState('date')
+  const [sortDir, setSortDir] = useState('desc')
+
+  function handleSort(key) {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDir(key === 'date' ? 'desc' : 'asc') }
+  }
+
+  function SortIcon({ col }) {
+    if (sortKey !== col) return <span className="text-gray-300 ml-1">⇅</span>
+    return <span className="text-[#3D6034] ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+  }
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -90,11 +101,24 @@ export default function OrdersLog() {
         return matchFilter && matchSearch
       })
       .sort((a, b) => {
-        const da = a.date || ''
-        const db = b.date || ''
-        return sortDir === 'desc' ? db.localeCompare(da) : da.localeCompare(db)
+        let av, bv
+        switch (sortKey) {
+          case 'invoice': {
+            av = parseInt(a.invoice_number?.replace('KM-', '') || '0')
+            bv = parseInt(b.invoice_number?.replace('KM-', '') || '0')
+            break
+          }
+          case 'partner': av = a.partner_name?.toLowerCase() || ''; bv = b.partner_name?.toLowerCase() || ''; break
+          case 'date':    av = a.date || ''; bv = b.date || ''; break
+          case 'total':   av = a.total || 0; bv = b.total || 0; break
+          case 'status':  av = getOrderStatus(a); bv = getOrderStatus(b); break
+          default:        av = a.date || ''; bv = b.date || ''
+        }
+        if (av < bv) return sortDir === 'asc' ? -1 : 1
+        if (av > bv) return sortDir === 'asc' ? 1 : -1
+        return 0
       })
-  }, [orders, filter, search, sortDir])
+  }, [orders, filter, search, sortKey, sortDir])
 
   const counts = {
     all: orders.length,
@@ -136,15 +160,6 @@ export default function OrdersLog() {
             </button>
           ))}
         </div>
-        {/* Date sort toggle */}
-        <button
-          onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          Date {sortDir === 'desc'
-            ? <><ChevronDown size={13} /> Newest first</>
-            : <><ChevronUp size={13} /> Oldest first</>}
-        </button>
       </div>
 
       {/* Table */}
@@ -153,8 +168,25 @@ export default function OrdersLog() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {['Invoice #', 'Partner', 'Date', 'Total', 'Status', 'PDF', 'Actions', ''].map(h => (
-                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+                {[
+                  { label: 'Invoice #', key: 'invoice' },
+                  { label: 'Partner',   key: 'partner' },
+                  { label: 'Date',      key: 'date' },
+                  { label: 'Total',     key: 'total' },
+                  { label: 'Status',    key: 'status' },
+                  { label: 'PDF',       key: null },
+                  { label: 'Actions',   key: null },
+                  { label: '',          key: null },
+                ].map(({ label, key }) => (
+                  <th
+                    key={label}
+                    onClick={() => key && handleSort(key)}
+                    className={`text-left text-xs font-medium px-5 py-3 whitespace-nowrap select-none ${
+                      key ? 'cursor-pointer hover:text-gray-700' : ''
+                    } ${sortKey === key ? 'text-[#3D6034]' : 'text-gray-400'}`}
+                  >
+                    {label}{key && <SortIcon col={key} />}
+                  </th>
                 ))}
               </tr>
             </thead>
