@@ -173,12 +173,31 @@ export default function Dashboard() {
     return () => supabase.removeChannel(channel)
   }, [])
 
-  // ── Computed values ──
+  // ── Computed values — all calculated live from orders table ──
   const activePartners = partners.filter(p => p.status === 'active').length
-  const totalKgAllTime = partners.reduce((s, p) => s + (Number(p.total_kg) || 0), 0)
-  const totalRevenueAllTime = partners.reduce((s, p) => s + (Number(p.total_kg) || 0) * (Number(p.price_per_kg) || 0), 0)
-  const totalOrdersAllTime = partners.reduce((s, p) => s + (Number(p.total_orders) || 0), 0)
-  const outstanding = orders.filter(o => getOrderStatus(o) !== 'paid').reduce((s, o) => s + (o.total || 0), 0)
+
+  // Total KG: sum of matcha line item quantities across all orders
+  const totalKgAllTime = orders.reduce((s, o) =>
+    s + (o.line_items || []).reduce((a, li) =>
+      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a
+    , 0)
+  , 0)
+
+  // Total Revenue: sum of all order totals (invoiced amount)
+  const totalRevenueAllTime = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+
+  // Total Orders: actual count of orders in DB
+  const totalOrdersAllTime = orders.length
+
+  // Outstanding: unpaid + overdue invoices
+  const outstanding = orders
+    .filter(o => getOrderStatus(o) !== 'paid')
+    .reduce((s, o) => s + (Number(o.total) || 0), 0)
+
+  // Total paid revenue
+  const totalPaid = orders
+    .filter(o => getOrderStatus(o) === 'paid')
+    .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
   // Month-on-month revenue trend
   const thisMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
@@ -232,12 +251,21 @@ export default function Dashboard() {
     .sort((a, b) => a.next_expected_order.localeCompare(b.next_expected_order))
     .slice(0, 8)
 
-  // Top 10 partners
-  const topPartners = [...partners]
-    .filter(p => (p.total_kg || 0) > 0 && (p.price_per_kg || 0) > 0)
-    .sort((a, b) => (b.total_kg * b.price_per_kg) - (a.total_kg * a.price_per_kg))
+  // Top 10 partners — calculated live from orders
+  const partnerRevMap = orders.reduce((acc, o) => {
+    if (!o.partner_id) return acc
+    acc[o.partner_id] = acc[o.partner_id] || { revenue: 0, kg: 0, orders: 0, name: o.partner_name }
+    acc[o.partner_id].revenue += Number(o.total) || 0
+    acc[o.partner_id].kg += (o.line_items || []).reduce((s, li) =>
+      li.desc?.toLowerCase().includes('matcha') ? s + (Number(li.qty) || 0) : s, 0)
+    acc[o.partner_id].orders += 1
+    return acc
+  }, {})
+  const topPartners = Object.entries(partnerRevMap)
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10)
-  const maxRevenue = topPartners[0] ? topPartners[0].total_kg * topPartners[0].price_per_kg : 1
+  const maxRevenue = topPartners[0]?.revenue || 1
 
   // Mission milestones
   const milestones = [
@@ -272,8 +300,8 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-3">
             {[
-              { label: 'Total KG', value: `${totalKgAllTime.toFixed(0)}kg` },
-              { label: 'All-Time Revenue', value: formatCurrency(totalRevenueAllTime) },
+              { label: 'Total KG Sold', value: `${totalKgAllTime.toFixed(1)}kg` },
+              { label: 'Total Invoiced', value: formatCurrency(totalRevenueAllTime) },
               { label: 'Total Orders', value: totalOrdersAllTime },
             ].map(s => (
               <div key={s.label} className="text-center bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl px-5 py-3.5">
@@ -298,10 +326,11 @@ export default function Dashboard() {
 
       {/* ── KPI Cards ── */}
       {prefs.kpis && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard label="Active Partners" value={activePartners} sub={`${partners.length} total`} icon={Users} />
-          <KpiCard label="Total KG Supplied" value={`${totalKgAllTime.toFixed(1)}kg`} sub="all time" icon={Package} color="#2563eb" />
-          <KpiCard label="All-Time Revenue" value={formatCurrency(totalRevenueAllTime)} sub="KG × price/kg" icon={TrendingUp} trend={revTrend} />
+          <KpiCard label="Total KG Sold" value={`${totalKgAllTime.toFixed(1)}kg`} sub="from all invoices" icon={Package} color="#2563eb" />
+          <KpiCard label="Total Invoiced" value={formatCurrency(totalRevenueAllTime)} sub={`${totalOrdersAllTime} orders`} icon={TrendingUp} trend={revTrend} />
+          <KpiCard label="Paid Revenue" value={formatCurrency(totalPaid)} sub="settled invoices" icon={ShoppingBag} color="#3D6034" />
           <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue" icon={AlertCircle} color="#dc2626" />
         </div>
       )}
@@ -403,12 +432,13 @@ export default function Dashboard() {
           {prefs.partners && (
             <div className="card overflow-hidden lg:col-span-2">
               <div className="p-5 border-b border-gray-100">
-                <SectionHeader title="Top 10 Partners by Revenue" sub="Total KG × price per KG · all time" linkTo="/partners" navigate={navigate} />
+                <SectionHeader title="Top 10 Partners by Revenue" sub="Calculated live from all invoices" linkTo="/partners" navigate={navigate} />
               </div>
               <div className="divide-y divide-gray-50">
-                {topPartners.map((p, idx) => {
-                  const revenue = (p.total_kg || 0) * (p.price_per_kg || 0)
-                  const pct = (revenue / maxRevenue) * 100
+                {topPartners.length === 0 ? (
+                  <p className="px-5 py-8 text-sm text-gray-400 text-center">No invoices yet — create one to see rankings</p>
+                ) : topPartners.map((p, idx) => {
+                  const pct = (p.revenue / maxRevenue) * 100
                   return (
                     <div
                       key={p.id}
@@ -421,13 +451,13 @@ export default function Dashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium text-gray-900 truncate">{p.name}</span>
-                          <span className="text-sm font-bold text-[#3D6034] ml-3 flex-shrink-0">{formatCurrency(revenue)}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-[#3D6034] rounded-full" style={{ width: `${pct}%`, opacity: 0.5 + pct * 0.005 }} />
+                          <div className="flex items-center gap-3 ml-3 flex-shrink-0">
+                            <span className="text-xs text-gray-400">{p.kg.toFixed(1)}kg · {p.orders} {p.orders === 1 ? 'order' : 'orders'}</span>
+                            <span className="text-sm font-bold text-[#3D6034]">{formatCurrency(p.revenue)}</span>
                           </div>
-                          <span className="text-xs text-gray-400 flex-shrink-0">{Number(p.total_kg).toFixed(1)}kg</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#3D6034] rounded-full" style={{ width: `${pct}%`, opacity: 0.5 + pct * 0.005 }} />
                         </div>
                       </div>
                     </div>
