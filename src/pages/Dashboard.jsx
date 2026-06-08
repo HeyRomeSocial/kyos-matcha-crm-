@@ -176,25 +176,31 @@ export default function Dashboard() {
   // ── Computed values ──
   const activePartners = partners.filter(p => p.status === 'active').length
 
-  // Total KG — read from partners.total_kg which includes:
-  // 1. Historical data imported from CSV
-  // 2. Gets incremented automatically when new CRM invoices are saved
-  const totalKgAllTime = partners.reduce((s, p) => s + (Number(p.total_kg) || 0), 0)
+  // Historical baseline from CSV import (stored on partners table)
+  const historicalKg = partners.reduce((s, p) => s + (Number(p.total_kg) || 0), 0)
+  const historicalRevenue = partners.reduce((s, p) => s + (Number(p.total_kg) || 0) * (Number(p.price_per_kg) || 0), 0)
+  const historicalOrders = partners.reduce((s, p) => s + (Number(p.total_orders) || 0), 0)
 
-  // Total Revenue — partners.total_kg × price_per_kg (includes all historical + CRM)
-  const totalRevenueAllTime = partners.reduce((s, p) =>
-    s + (Number(p.total_kg) || 0) * (Number(p.price_per_kg) || 0)
+  // CRM orders — invoices created through this system
+  const crmKg = orders.reduce((s, o) =>
+    s + (o.line_items || []).reduce((a, li) =>
+      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a
+    , 0)
   , 0)
+  const crmRevenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const crmOrders = orders.length
 
-  // Total Orders — from partners.total_orders (includes historical + CRM)
-  const totalOrdersAllTime = partners.reduce((s, p) => s + (Number(p.total_orders) || 0), 0)
+  // Combined totals = historical + CRM
+  const totalKgAllTime = historicalKg + crmKg
+  const totalRevenueAllTime = historicalRevenue + crmRevenue
+  const totalOrdersAllTime = historicalOrders + crmOrders
 
-  // Outstanding — only CRM invoices (unpaid + overdue)
+  // Outstanding — CRM invoices unpaid + overdue
   const outstanding = orders
     .filter(o => getOrderStatus(o) !== 'paid')
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // Paid revenue — CRM invoices marked as paid
+  // Paid — CRM invoices marked as paid
   const totalPaid = orders
     .filter(o => getOrderStatus(o) === 'paid')
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
