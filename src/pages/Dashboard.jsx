@@ -164,6 +164,13 @@ export default function Dashboard() {
       setLoading(false)
     }
     load()
+
+    // Real-time: refresh dashboard when orders or partners change
+    const channel = supabase.channel('dashboard_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, load)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
   }, [])
 
   // ── Computed values ──
