@@ -173,28 +173,52 @@ export default function Dashboard() {
     return () => supabase.removeChannel(channel)
   }, [])
 
-  // ── Computed values — all calculated live from orders table ──
+  // ── Computed values — historical imported data + live CRM orders ──
   const activePartners = partners.filter(p => p.status === 'active').length
 
-  // Total KG: sum of matcha line item quantities across all orders
-  const totalKgAllTime = orders.reduce((s, o) =>
+  // KG from CRM orders (invoiced through this system)
+  const crmKg = orders.reduce((s, o) =>
     s + (o.line_items || []).reduce((a, li) =>
       li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a
     , 0)
   , 0)
 
-  // Total Revenue: sum of all order totals (invoiced amount)
-  const totalRevenueAllTime = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  // KG from historical imported data (CSV import stored on partners)
+  // Subtract CRM kg to avoid double-counting partners already invoiced here
+  const crmPartnerIds = new Set(orders.map(o => o.partner_id).filter(Boolean))
+  const historicalKg = partners.reduce((s, p) => {
+    // Only count historical KG for partners that have NO CRM orders yet
+    if (crmPartnerIds.has(p.id)) return s
+    return s + (Number(p.total_kg) || 0)
+  }, 0)
 
-  // Total Orders: actual count of orders in DB
-  const totalOrdersAllTime = orders.length
+  const totalKgAllTime = crmKg + historicalKg
 
-  // Outstanding: unpaid + overdue invoices
+  // Revenue from CRM orders
+  const crmRevenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+
+  // Revenue from historical data (partners not yet invoiced in CRM)
+  const historicalRevenue = partners.reduce((s, p) => {
+    if (crmPartnerIds.has(p.id)) return s
+    return s + (Number(p.total_kg) || 0) * (Number(p.price_per_kg) || 0)
+  }, 0)
+
+  const totalRevenueAllTime = crmRevenue + historicalRevenue
+
+  // Total orders: CRM orders + historical order counts
+  const crmOrderCount = orders.length
+  const historicalOrderCount = partners.reduce((s, p) => {
+    if (crmPartnerIds.has(p.id)) return s
+    return s + (Number(p.total_orders) || 0)
+  }, 0)
+  const totalOrdersAllTime = crmOrderCount + historicalOrderCount
+
+  // Outstanding: only from CRM (unpaid + overdue)
   const outstanding = orders
     .filter(o => getOrderStatus(o) !== 'paid')
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // Total paid revenue
+  // Paid revenue: CRM paid invoices only
   const totalPaid = orders
     .filter(o => getOrderStatus(o) === 'paid')
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
