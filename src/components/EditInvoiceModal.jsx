@@ -146,6 +146,8 @@ export default function EditInvoiceModal({ order, onClose, onSaved }) {
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage.from('invoices').getPublicUrl(filename)
+      // Add cache-busting timestamp so browser always loads the fresh PDF
+      const freshUrl = `${publicUrl}?t=${Date.now()}`
 
       const lineItemsClean = lineItems.map(({ id, ...rest }) => rest)
       const { error } = await supabase.from('orders').update({
@@ -153,14 +155,14 @@ export default function EditInvoiceModal({ order, onClose, onSaved }) {
         line_items: lineItemsClean,
         subtotal,
         total,
-        invoice_pdf_url: publicUrl,
+        invoice_pdf_url: freshUrl,
         bill_address: billTo.address,
         bill_contact: billTo.contact,
         bill_email: billTo.email,
       }).eq('id', order.id)
       if (error) throw error
 
-      setSavedPdfUrl(publicUrl)
+      setSavedPdfUrl(freshUrl)
       toast.success(`${order.invoice_number} updated!`)
       onSaved()
     } catch (err) {
