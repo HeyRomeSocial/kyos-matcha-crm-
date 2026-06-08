@@ -4,7 +4,8 @@ import { Save, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Settings() {
-  const [users, setUsers] = useState([])
+  const [session, setSession] = useState(null)
+  const [saving, setSaving] = useState(false)
   const [fromAddress, setFromAddress] = useState({
     name: 'Kyos Matcha',
     line1: '30 Seagull Lane',
@@ -15,14 +16,32 @@ export default function Settings() {
     sortCode: '04-00-05',
     accountNumber: '86383529',
   })
-  const [session, setSession] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    // Load saved settings from DB
+    supabase.from('settings').select('*').eq('id', 1).single().then(({ data }) => {
+      if (data) {
+        setFromAddress({ name: data.from_name, line1: data.from_line1, line2: data.from_line2 })
+        setBanking({ accountName: data.bank_name, sortCode: data.bank_sort, accountNumber: data.bank_account })
+      }
+    })
   }, [])
 
-  function handleSave() {
-    toast.success('Settings saved (stored locally for this session)')
+  async function handleSave() {
+    setSaving(true)
+    const { error } = await supabase.from('settings').update({
+      from_name: fromAddress.name,
+      from_line1: fromAddress.line1,
+      from_line2: fromAddress.line2,
+      bank_name: banking.accountName,
+      bank_sort: banking.sortCode,
+      bank_account: banking.accountNumber,
+      updated_at: new Date().toISOString(),
+    }).eq('id', 1)
+    if (error) toast.error(error.message)
+    else toast.success('Settings saved — all future invoices will use these details')
+    setSaving(false)
   }
 
   return (
@@ -32,7 +51,7 @@ export default function Settings() {
         <p className="text-sm text-gray-500 mt-0.5">Configure your CRM defaults</p>
       </div>
 
-      {/* Logged-in user */}
+      {/* Account */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">Your Account</h2>
         <div className="flex items-center gap-3">
@@ -49,7 +68,7 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* Invoice FROM */}
+      {/* From address */}
       <div className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-gray-700">Invoice — From Address</h2>
         <div>
@@ -83,11 +102,11 @@ export default function Settings() {
             <input className="input" value={banking.accountNumber} onChange={e => setBanking(b => ({ ...b, accountNumber: e.target.value }))} />
           </div>
         </div>
-        <p className="text-xs text-gray-400">These details appear on every invoice PDF.</p>
+        <p className="text-xs text-gray-400">These details appear on every new invoice PDF.</p>
       </div>
 
-      <button onClick={handleSave} className="btn-primary">
-        <Save size={15} /> Save Settings
+      <button onClick={handleSave} disabled={saving} className="btn-primary">
+        <Save size={15} /> {saving ? 'Saving…' : 'Save Settings'}
       </button>
 
       {/* Danger zone */}
@@ -100,12 +119,7 @@ export default function Settings() {
           Permanently delete all partner and order data. This cannot be undone.
           Use the Supabase dashboard to perform destructive operations safely.
         </p>
-        <a
-          href="https://supabase.com/dashboard"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-red-400 hover:underline"
-        >
+        <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-xs text-red-400 hover:underline">
           Open Supabase Dashboard →
         </a>
       </div>

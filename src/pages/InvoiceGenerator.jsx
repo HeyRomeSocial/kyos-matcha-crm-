@@ -81,16 +81,16 @@ function PartnerSearch({ partners, selectedPartner, onSelect }) {
   )
 }
 
-const FROM_ADDRESS = {
-  name: 'Kyos Matcha',
-  line1: '30 Seagull Lane',
-  line2: 'E16 1PY, London',
-}
-
-const BANKING = {
+// These are overridden at runtime from the settings table
+const BANKING_DEFAULTS = {
   accountName: 'KM WELNESS LTD',
   sortCode: '04-00-05',
   accountNumber: '86383529',
+}
+const FROM_DEFAULTS = {
+  name: 'Kyos Matcha',
+  line1: '30 Seagull Lane',
+  line2: 'E16 1PY, London',
 }
 
 function newItem(desc = '', qty = 1, price = 0) {
@@ -108,15 +108,21 @@ export default function InvoiceGenerator() {
   const [lineItems, setLineItems] = useState([newItem('Premium Matcha', 1, 0), newItem('Shipping', 1, 0)])
   const [saving, setSaving] = useState(false)
   const [savedPdfUrl, setSavedPdfUrl] = useState(null)
-  // Editable Bill To fields
   const [billTo, setBillTo] = useState({ name: '', address: '', contact: '', email: '' })
+  const [fromAddress, setFromAddress] = useState(FROM_DEFAULTS)
+  const [banking, setBanking] = useState(BANKING_DEFAULTS)
 
   useEffect(() => {
     async function load() {
-      const [{ data: p }, { data: existingOrders }] = await Promise.all([
+      const [{ data: p }, { data: existingOrders }, { data: s }] = await Promise.all([
         supabase.from('partners').select('*').eq('status', 'active').order('name'),
         supabase.from('orders').select('invoice_number'),
+        supabase.from('settings').select('*').eq('id', 1).single(),
       ])
+      if (s) {
+        setFromAddress({ name: s.from_name, line1: s.from_line1, line2: s.from_line2 })
+        setBanking({ accountName: s.bank_name, sortCode: s.bank_sort, accountNumber: s.bank_account })
+      }
       setPartners(p || [])
 
       // Calculate next invoice number from actual orders in DB — never duplicates
@@ -436,6 +442,8 @@ kyosmatcha.com`
             lineItems={lineItems}
             subtotal={subtotal}
             total={total}
+            fromAddress={fromAddress}
+            banking={banking}
           />
         </div>
       </div>
@@ -444,9 +452,11 @@ kyosmatcha.com`
 }
 
 const InvoicePreview = React.forwardRef(function InvoicePreview(
-  { invoiceNumber, invoiceDate, partner, billTo, lineItems, subtotal, total },
+  { invoiceNumber, invoiceDate, partner, billTo, lineItems, subtotal, total, fromAddress, banking },
   ref
 ) {
+  const FROM = fromAddress || FROM_DEFAULTS
+  const BANK = banking || BANKING_DEFAULTS
   function fmtDate(d) {
     if (!d) return ''
     try {
@@ -486,9 +496,9 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
       <div style={{ display: 'flex', gap: '60px', marginBottom: '36px' }}>
         <div>
           <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>FROM</div>
-          <div style={{ fontWeight: 600 }}>{FROM_ADDRESS.name}</div>
-          <div style={{ color: '#6b7280', marginTop: '2px' }}>{FROM_ADDRESS.line1}</div>
-          <div style={{ color: '#6b7280' }}>{FROM_ADDRESS.line2}</div>
+          <div style={{ fontWeight: 600 }}>{FROM.name}</div>
+          <div style={{ color: '#6b7280', marginTop: '2px' }}>{FROM.line1}</div>
+          <div style={{ color: '#6b7280' }}>{FROM.line2}</div>
         </div>
         <div>
           <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>BILL TO</div>
@@ -551,9 +561,9 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
         marginBottom: '28px',
       }}>
         <div style={{ fontWeight: 600, marginBottom: '8px', color: '#3D6034', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Banking Details</div>
-        <div style={{ color: '#374151' }}>Account Name: <strong>{BANKING.accountName}</strong></div>
-        <div style={{ color: '#374151', marginTop: '4px' }}>Sort Code: <strong>{BANKING.sortCode}</strong></div>
-        <div style={{ color: '#374151', marginTop: '4px' }}>Account Number: <strong>{BANKING.accountNumber}</strong></div>
+        <div style={{ color: '#374151' }}>Account Name: <strong>{BANK.accountName}</strong></div>
+        <div style={{ color: '#374151', marginTop: '4px' }}>Sort Code: <strong>{BANK.sortCode}</strong></div>
+        <div style={{ color: '#374151', marginTop: '4px' }}>Account Number: <strong>{BANK.accountNumber}</strong></div>
       </div>
 
       {/* Footer */}

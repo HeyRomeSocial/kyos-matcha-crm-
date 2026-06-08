@@ -7,16 +7,18 @@ import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
-const FROM_ADDRESS = { name: 'Kyos Matcha', line1: '30 Seagull Lane', line2: 'E16 1PY, London' }
-const BANKING = { accountName: 'KM WELNESS LTD', sortCode: '04-00-05', accountNumber: '86383529' }
+const FROM_DEFAULTS = { name: 'Kyos Matcha', line1: '30 Seagull Lane', line2: 'E16 1PY, London' }
+const BANK_DEFAULTS = { accountName: 'KM WELNESS LTD', sortCode: '04-00-05', accountNumber: '86383529' }
 
 function newItem(desc = '', qty = 1, price = 0) {
   return { id: Math.random().toString(36).slice(2), desc, qty, price }
 }
 
 const InvoicePreview = React.forwardRef(function InvoicePreview(
-  { invoiceNumber, invoiceDate, billTo, lineItems, subtotal, total }, ref
+  { invoiceNumber, invoiceDate, billTo, lineItems, subtotal, total, fromAddress, banking }, ref
 ) {
+  const FROM = fromAddress || FROM_DEFAULTS
+  const BANK = banking || BANK_DEFAULTS
   function fmtDate(d) {
     if (!d) return ''
     try { const [y, m, day] = d.split('-'); return `${day}/${m}/${y}` } catch { return d }
@@ -38,9 +40,9 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
       <div style={{ display: 'flex', gap: '60px', marginBottom: '36px' }}>
         <div>
           <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>FROM</div>
-          <div style={{ fontWeight: 600 }}>{FROM_ADDRESS.name}</div>
-          <div style={{ color: '#6b7280', marginTop: '2px' }}>{FROM_ADDRESS.line1}</div>
-          <div style={{ color: '#6b7280' }}>{FROM_ADDRESS.line2}</div>
+          <div style={{ fontWeight: 600 }}>{FROM.name}</div>
+          <div style={{ color: '#6b7280', marginTop: '2px' }}>{FROM.line1}</div>
+          <div style={{ color: '#6b7280' }}>{FROM.line2}</div>
         </div>
         <div>
           <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>BILL TO</div>
@@ -81,9 +83,9 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
       </div>
       <div style={{ background: '#EEF3EC', border: '1px solid #b3d0ab', borderRadius: '8px', padding: '16px 20px', marginBottom: '28px' }}>
         <div style={{ fontWeight: 600, marginBottom: '8px', color: '#3D6034', fontSize: '10px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Banking Details</div>
-        <div style={{ color: '#374151' }}>Account Name: <strong>{BANKING.accountName}</strong></div>
-        <div style={{ color: '#374151', marginTop: '4px' }}>Sort Code: <strong>{BANKING.sortCode}</strong></div>
-        <div style={{ color: '#374151', marginTop: '4px' }}>Account Number: <strong>{BANKING.accountNumber}</strong></div>
+        <div style={{ color: '#374151' }}>Account Name: <strong>{BANK.accountName}</strong></div>
+        <div style={{ color: '#374151', marginTop: '4px' }}>Sort Code: <strong>{BANK.sortCode}</strong></div>
+        <div style={{ color: '#374151', marginTop: '4px' }}>Account Number: <strong>{BANK.accountNumber}</strong></div>
       </div>
       <div style={{ color: '#9ca3af', fontSize: '10px', textAlign: 'center', borderTop: '1px solid #f3f4f6', paddingTop: '20px' }}>
         Thank you for your business · kyosmatcha.com · partners@kyosmatcha.com
@@ -106,6 +108,17 @@ export default function EditInvoiceModal({ order, onClose, onSaved }) {
   })
   const [saving, setSaving] = useState(false)
   const [savedPdfUrl, setSavedPdfUrl] = useState(null)
+  const [fromAddress, setFromAddress] = useState(FROM_DEFAULTS)
+  const [banking, setBanking] = useState(BANK_DEFAULTS)
+
+  React.useEffect(() => {
+    supabase.from('settings').select('*').eq('id', 1).single().then(({ data }) => {
+      if (data) {
+        setFromAddress({ name: data.from_name, line1: data.from_line1, line2: data.from_line2 })
+        setBanking({ accountName: data.bank_name, sortCode: data.bank_sort, accountNumber: data.bank_account })
+      }
+    })
+  }, [])
 
   function updateItem(id, field, value) {
     setLineItems(items => items.map(item =>
@@ -257,6 +270,8 @@ export default function EditInvoiceModal({ order, onClose, onSaved }) {
               lineItems={lineItems}
               subtotal={subtotal}
               total={total}
+              fromAddress={fromAddress}
+              banking={banking}
             />
           </div>
         </div>
