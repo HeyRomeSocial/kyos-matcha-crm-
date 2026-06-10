@@ -57,15 +57,15 @@ function HeroBanner({ totalKg, activePartners, today }) {
   const animated = useCountUp(matchasServed)
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden" style={{ height: '230px' }}>
+    <div className="relative w-full rounded-2xl overflow-hidden" style={{ aspectRatio: '2 / 1' }}>
       <img
         src="/hero-products.jpg"
         alt="Kyo's Matcha products"
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ objectPosition: 'center 55%' }}
+        style={{ objectPosition: 'center center' }}
         onError={e => { e.currentTarget.src = '/matcha-hero.jpg' }}
       />
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(22,40,16,0.55) 0%, rgba(22,40,16,0.72) 100%)' }} />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(22,40,16,0.45) 0%, rgba(22,40,16,0.65) 100%)' }} />
 
       {/* Top row — logo + date */}
       <div className="absolute top-5 left-7 right-7 flex items-start justify-between">
@@ -80,11 +80,11 @@ function HeroBanner({ totalKg, activePartners, today }) {
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
         <p
           className="text-white font-bold tracking-tight tabular-nums"
-          style={{ fontSize: '52px', lineHeight: 1, textShadow: '0 2px 24px rgba(0,0,0,0.4)' }}
+          style={{ fontSize: 'clamp(56px, 7vw, 96px)', lineHeight: 1, textShadow: '0 2px 28px rgba(0,0,0,0.45)' }}
         >
           {Math.round(animated).toLocaleString('en-GB')}
         </p>
-        <p className="text-white/80 text-xs font-semibold uppercase mt-3" style={{ letterSpacing: '0.35em' }}>
+        <p className="text-white/85 font-semibold uppercase mt-4" style={{ letterSpacing: '0.4em', fontSize: 'clamp(11px, 1.1vw, 15px)' }}>
           Matchas Served Across The UK
         </p>
       </div>
