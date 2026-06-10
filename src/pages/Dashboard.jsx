@@ -93,6 +93,56 @@ function useCountUp(target, duration = 2200) {
   return display
 }
 
+// Split-flap clock style digit card
+function FlipDigit({ char }) {
+  const isDigit = /\d/.test(char)
+  if (!isDigit) {
+    // Comma separator — no card
+    return (
+      <span style={{
+        color: 'rgba(255,255,255,0.85)',
+        fontSize: 'clamp(28px, 3.2vw, 44px)',
+        fontWeight: 700,
+        alignSelf: 'flex-end',
+        paddingBottom: 'clamp(6px, 0.8vw, 12px)',
+        margin: '0 1px',
+      }}>{char}</span>
+    )
+  }
+  return (
+    <span style={{
+      position: 'relative',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: 'clamp(40px, 4.6vw, 64px)',
+      height: 'clamp(56px, 6.4vw, 88px)',
+      background: 'rgba(20,33,15,0.92)',
+      borderRadius: 'clamp(8px, 0.9vw, 12px)',
+      boxShadow: '0 4px 18px rgba(0,0,0,0.35)',
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 700,
+      fontSize: 'clamp(34px, 3.8vw, 54px)',
+      color: '#EEF3EC',
+      lineHeight: 1,
+      margin: '0 2px',
+      overflow: 'hidden',
+    }}>
+      {char}
+      {/* horizontal flip line */}
+      <span style={{
+        position: 'absolute', left: 0, right: 0, top: '50%',
+        height: '1.5px', background: 'rgba(0,0,0,0.45)',
+      }} />
+      {/* top half subtle shade */}
+      <span style={{
+        position: 'absolute', left: 0, right: 0, top: 0, height: '50%',
+        background: 'rgba(255,255,255,0.04)',
+      }} />
+    </span>
+  )
+}
+
 function HeroBanner({ totalKg, activePartners, today }) {
   const matchasServed = Math.round(totalKg * 500)
   const animated = useCountUp(matchasServed)
@@ -119,20 +169,12 @@ function HeroBanner({ totalKg, activePartners, today }) {
 
       {/* Counter — positioned in the upper area so products stay visible */}
       <div className="absolute inset-x-0 flex flex-col items-center text-center px-4" style={{ top: '18%' }}>
-        <p
-          className="text-white tabular-nums"
-          style={{
-            fontFamily: "'Playfair Display', Georgia, serif",
-            fontWeight: 600,
-            fontSize: 'clamp(56px, 7vw, 96px)',
-            lineHeight: 1,
-            letterSpacing: '-0.01em',
-            textShadow: '0 2px 28px rgba(0,0,0,0.45)',
-          }}
-        >
-          {Math.round(animated).toLocaleString('en-GB')}
-        </p>
-        <p className="text-white/85 font-semibold uppercase mt-4" style={{ letterSpacing: '0.4em', fontSize: 'clamp(11px, 1.1vw, 15px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {Math.round(animated).toLocaleString('en-GB').split('').map((char, i) => (
+            <FlipDigit key={i} char={char} />
+          ))}
+        </div>
+        <p className="text-white/85 font-semibold uppercase mt-5" style={{ letterSpacing: '0.4em', fontSize: 'clamp(11px, 1.1vw, 15px)' }}>
           Matchas Served Across The UK
         </p>
       </div>
