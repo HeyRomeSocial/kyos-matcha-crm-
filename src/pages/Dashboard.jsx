@@ -79,8 +79,15 @@ function HeroBanner({ totalKg, activePartners, today }) {
       {/* Counter — positioned in the upper area so products stay visible */}
       <div className="absolute inset-x-0 flex flex-col items-center text-center px-4" style={{ top: '18%' }}>
         <p
-          className="text-white font-bold tracking-tight tabular-nums"
-          style={{ fontSize: 'clamp(56px, 7vw, 96px)', lineHeight: 1, textShadow: '0 2px 28px rgba(0,0,0,0.45)' }}
+          className="text-white tabular-nums"
+          style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontWeight: 600,
+            fontSize: 'clamp(56px, 7vw, 96px)',
+            lineHeight: 1,
+            letterSpacing: '-0.01em',
+            textShadow: '0 2px 28px rgba(0,0,0,0.45)',
+          }}
         >
           {Math.round(animated).toLocaleString('en-GB')}
         </p>
