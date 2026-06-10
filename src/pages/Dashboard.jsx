@@ -27,6 +27,71 @@ const WIDGETS = [
   { id: 'mission',   label: 'Mission Progress',     defaultOn: false },
 ]
 
+// Animated count-up — rolls the number from its previous value to the target
+function useCountUp(target, duration = 2200) {
+  const [display, setDisplay] = useState(0)
+  const fromRef = React.useRef(0)
+  const rafRef = React.useRef(null)
+
+  useEffect(() => {
+    const from = fromRef.current
+    const start = performance.now()
+    function tick(now) {
+      const t = Math.min((now - start) / duration, 1)
+      // ease-out cubic — fast start, gentle landing
+      const eased = 1 - Math.pow(1 - t, 3)
+      const value = from + (target - from) * eased
+      setDisplay(value)
+      if (t < 1) rafRef.current = requestAnimationFrame(tick)
+      else fromRef.current = target
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [target, duration])
+
+  return display
+}
+
+function HeroBanner({ totalKg, activePartners, today }) {
+  const matchasServed = Math.round(totalKg * 500)
+  const animated = useCountUp(matchasServed)
+
+  return (
+    <div className="relative w-full rounded-2xl overflow-hidden" style={{ height: '230px' }}>
+      <img
+        src="/hero-products.jpg"
+        alt="Kyo's Matcha products"
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ objectPosition: 'center 55%' }}
+        onError={e => { e.currentTarget.src = '/matcha-hero.jpg' }}
+      />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(22,40,16,0.55) 0%, rgba(22,40,16,0.72) 100%)' }} />
+
+      {/* Top row — logo + date */}
+      <div className="absolute top-5 left-7 right-7 flex items-start justify-between">
+        <img src="/logo.png" alt="Kyos Matcha" className="h-7 w-auto brightness-0 invert" />
+        <div className="text-right">
+          <p className="text-white/60 text-xs">{today}</p>
+          <p className="text-white/80 text-xs mt-0.5">{activePartners} active partners</p>
+        </div>
+      </div>
+
+      {/* Centre — animated counter */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+        <p
+          className="text-white font-bold tracking-tight tabular-nums"
+          style={{ fontSize: '52px', lineHeight: 1, textShadow: '0 2px 24px rgba(0,0,0,0.4)' }}
+        >
+          {Math.round(animated).toLocaleString('en-GB')}
+        </p>
+        <p className="text-white/80 text-xs font-semibold uppercase mt-3" style={{ letterSpacing: '0.35em' }}>
+          Matchas Served Across The UK
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function loadPrefs() {
   try {
     const saved = localStorage.getItem('km_dashboard_widgets')
@@ -294,30 +359,12 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 max-w-7xl">
 
-      {/* ── Hero banner ── */}
-      <div className="relative w-full rounded-2xl overflow-hidden" style={{ height: '200px' }}>
-        <img src="/matcha-hero.jpg" alt="Matcha" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 60%' }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(22,40,16,0.88) 0%, rgba(22,40,16,0.6) 55%, rgba(22,40,16,0.2) 100%)' }} />
-        <div className="absolute inset-0 flex items-center px-8 justify-between">
-          <div>
-            <img src="/logo.png" alt="Kyos Matcha" className="h-8 w-auto mb-3 brightness-0 invert" />
-            <p className="text-white/60 text-xs">{today}</p>
-            <p className="text-white/80 text-sm mt-0.5">{activePartners} active partners across the UK</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {[
-              { label: 'Total KG Sold', value: `${totalKgAllTime.toFixed(1)}kg` },
-              { label: 'Total Invoiced', value: formatCurrency(totalRevenueAllTime) },
-              { label: 'Total Orders', value: totalOrdersAllTime },
-            ].map(s => (
-              <div key={s.label} className="text-center bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl px-5 py-3.5">
-                <p className="text-white/60 text-[10px] font-medium uppercase tracking-widest">{s.label}</p>
-                <p className="text-white text-xl font-bold mt-1">{s.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* ── Hero banner with matchas served counter ── */}
+      <HeroBanner
+        totalKg={totalKgAllTime}
+        activePartners={activePartners}
+        today={today}
+      />
 
       {/* ── Customise button ── */}
       <div className="flex items-center justify-between">
