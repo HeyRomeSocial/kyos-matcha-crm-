@@ -68,12 +68,54 @@ export default function Partners() {
   }
 
   async function load() {
-    const { data } = await supabase.from('partners').select('*').order('name')
-    setPartners(data || [])
+    const [{ data: p }, { data: orders }] = await Promise.all([
+      supabase.from('partners').select('*').order('name'),
+      supabase.from('orders').select('partner_id, total, line_items, date'),
+    ])
+
+    // Build per-partner CRM stats from actual orders
+    const crmStats = (orders || []).reduce((acc, o) => {
+      if (!o.partner_id) return acc
+      acc[o.partner_id] = acc[o.partner_id] || { orders: 0, kg: 0, spent: 0, lastDate: null }
+      acc[o.partner_id].orders += 1
+      acc[o.partner_id].spent += Number(o.total) || 0
+      acc[o.partner_id].kg += (o.line_items || []).reduce((s, li) =>
+        li.desc?.toLowerCase().includes('matcha') ? s + (Number(li.qty) || 0) : s, 0)
+      if (!acc[o.partner_id].lastDate || o.date > acc[o.partner_id].lastDate) {
+        acc[o.partner_id].lastDate = o.date
+      }
+      return acc
+    }, {})
+
+    // Combine: historical (CSV import) + CRM orders
+    const enriched = (p || []).map(partner => {
+      const crm = crmStats[partner.id] || { orders: 0, kg: 0, spent: 0, lastDate: null }
+      const historicalKg = Number(partner.total_kg) || 0
+      const historicalOrders = Number(partner.total_orders) || 0
+      const historicalSpent = historicalKg * (Number(partner.price_per_kg) || 0)
+      const lastOrder = [partner.last_order_date, crm.lastDate].filter(Boolean).sort().pop() || null
+      return {
+        ...partner,
+        combined_orders: historicalOrders + crm.orders,
+        combined_kg: historicalKg + crm.kg,
+        combined_spent: historicalSpent + crm.spent,
+        combined_last_order: lastOrder,
+      }
+    })
+
+    setPartners(enriched)
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    // Real-time: refresh when orders or partners change
+    const channel = supabase.channel('partners_page_rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, load)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [])
 
   async function deletePartner(partner) {
     const { error } = await supabase.from('partners').delete().eq('id', partner.id)
@@ -93,10 +135,10 @@ export default function Partners() {
       let av, bv
       switch (sortKey) {
         case 'name':         av = a.name?.toLowerCase(); bv = b.name?.toLowerCase(); break
-        case 'total_orders': av = a.total_orders || 0;   bv = b.total_orders || 0;   break
-        case 'total_kg':     av = a.total_kg || 0;       bv = b.total_kg || 0;       break
-        case 'total_spent':  av = a.total_spent || 0;    bv = b.total_spent || 0;    break
-        case 'last_order':   av = a.last_order_date || ''; bv = b.last_order_date || ''; break
+        case 'total_orders': av = a.combined_orders || 0; bv = b.combined_orders || 0; break
+        case 'total_kg':     av = a.combined_kg || 0;     bv = b.combined_kg || 0;     break
+        case 'total_spent':  av = a.combined_spent || 0;  bv = b.combined_spent || 0;  break
+        case 'last_order':   av = a.combined_last_order || ''; bv = b.combined_last_order || ''; break
         case 'next_order':   av = a.next_expected_order || ''; bv = b.next_expected_order || ''; break
         case 'price_per_kg': av = a.price_per_kg || 0;   bv = b.price_per_kg || 0;  break
         default:             av = a.name?.toLowerCase(); bv = b.name?.toLowerCase()
@@ -210,14 +252,12 @@ export default function Partners() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{p.contact_name || '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{p.price_per_kg ? formatCurrency(p.price_per_kg) : '—'}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.total_orders || 0}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.total_kg ? `${Number(p.total_kg).toFixed(1)}kg` : '—'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.combined_orders || 0}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.combined_kg ? `${Number(p.combined_kg).toFixed(1)}kg` : '—'}</td>
                   <td className="px-4 py-3 text-sm font-medium text-[#3D6034]">
-                    {p.total_kg && p.price_per_kg
-                      ? formatCurrency(Number(p.total_kg) * Number(p.price_per_kg))
-                      : '—'}
+                    {p.combined_spent ? formatCurrency(p.combined_spent) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.last_order_date)}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.combined_last_order)}</td>
                   <td className="px-4 py-3"><NextOrderCell partner={p} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">

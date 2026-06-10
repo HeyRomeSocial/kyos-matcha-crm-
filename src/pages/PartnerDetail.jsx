@@ -41,12 +41,21 @@ export default function PartnerDetail() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-[#3D6034] border-t-transparent rounded-full animate-spin" /></div>
   if (!partner) return <div className="text-center text-gray-400 mt-24">Partner not found.</div>
 
-  // Use stored totals from DB (includes historical imported data)
-  const totalKg = partner.total_kg || 0
-  const totalSpend = partner.total_spent || 0
-  // Also calculate from orders in CRM for reference
-  const ordersKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => li.desc?.toLowerCase().includes('matcha') ? a + (li.qty || 0) : a, 0), 0)
-  const ordersSpend = orders.reduce((s, o) => s + (o.total || 0), 0)
+  // Historical data from CSV import
+  const historicalKg = Number(partner.total_kg) || 0
+  const historicalOrders = Number(partner.total_orders) || 0
+  const historicalSpend = historicalKg * (Number(partner.price_per_kg) || 0)
+
+  // CRM orders created in this system
+  const crmKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
+    li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+  const crmSpend = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const crmOrders = orders.length
+
+  // Combined totals
+  const totalKg = historicalKg + crmKg
+  const totalSpend = historicalSpend + crmSpend
+  const totalOrders = historicalOrders + crmOrders
 
   const infoFields = [
     ['Contact', partner.contact_name],
@@ -91,23 +100,23 @@ export default function PartnerDetail() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-5">
           <p className="text-xs text-gray-500">Total Orders</p>
-          <p className="text-2xl font-bold mt-1">{partner.total_orders || 0}</p>
-          <p className="text-xs text-gray-400 mt-1">all time</p>
+          <p className="text-2xl font-bold mt-1">{totalOrders}</p>
+          <p className="text-xs text-gray-400 mt-1">{historicalOrders} historical · {crmOrders} CRM</p>
         </div>
         <div className="card p-5">
           <p className="text-xs text-gray-500">Total KG Ordered</p>
-          <p className="text-2xl font-bold mt-1">{Number(totalKg).toFixed(1)}kg</p>
-          <p className="text-xs text-gray-400 mt-1">all time</p>
+          <p className="text-2xl font-bold mt-1">{totalKg.toFixed(1)}kg</p>
+          <p className="text-xs text-gray-400 mt-1">{historicalKg.toFixed(1)}kg historical · {crmKg.toFixed(1)}kg CRM</p>
         </div>
         <div className="card p-5">
           <p className="text-xs text-gray-500">Total Spent</p>
           <p className="text-2xl font-bold mt-1 text-[#3D6034]">{formatCurrency(totalSpend)}</p>
-          <p className="text-xs text-gray-400 mt-1">all time</p>
+          <p className="text-xs text-gray-400 mt-1">{formatCurrency(historicalSpend)} historical · {formatCurrency(crmSpend)} CRM</p>
         </div>
         <div className="card p-5">
-          <p className="text-xs text-gray-500">CRM Orders</p>
-          <p className="text-2xl font-bold mt-1">{orders.length}</p>
-          <p className="text-xs text-gray-400 mt-1">{formatCurrency(ordersSpend)} invoiced here</p>
+          <p className="text-xs text-gray-500">CRM Invoiced</p>
+          <p className="text-2xl font-bold mt-1">{formatCurrency(crmSpend)}</p>
+          <p className="text-xs text-gray-400 mt-1">{crmOrders} invoice{crmOrders !== 1 ? 's' : ''} in CRM</p>
         </div>
       </div>
 
