@@ -10,22 +10,63 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   Title, Tooltip, Legend, LineElement, PointElement, Filler
 } from 'chart.js'
-import { Bar } from 'react-chartjs-2'
-import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO } from 'date-fns'
+import { Bar, Line } from 'react-chartjs-2'
+import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO, getDaysInMonth } from 'date-fns'
+import { Download, Calendar } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
 
 // ─── Widget registry ──────────────────────────────────────────────────────────
 const WIDGETS = [
-  { id: 'kpis',      label: 'KPI Cards',           defaultOn: true },
-  { id: 'chart',     label: 'Revenue Chart',        defaultOn: true },
-  { id: 'goals',     label: 'Monthly Goals',        defaultOn: true },
-  { id: 'tasks',     label: 'Open Tasks',           defaultOn: true },
-  { id: 'partners',  label: 'Top 10 Partners',      defaultOn: true },
-  { id: 'reorders',  label: 'Upcoming Reorders',    defaultOn: true },
-  { id: 'invoices',  label: 'Recent Invoices',      defaultOn: true },
-  { id: 'mission',   label: 'Mission Progress',     defaultOn: false },
+  { id: 'kpis',       label: 'KPI Cards',            defaultOn: true },
+  { id: 'daily',      label: 'Daily Revenue Chart',  defaultOn: true },
+  { id: 'conversion', label: 'Conversion Gauge',     defaultOn: true },
+  { id: 'chart',      label: '12-Month Revenue',     defaultOn: true },
+  { id: 'goals',      label: 'Monthly Goals',        defaultOn: true },
+  { id: 'tasks',      label: 'Open Tasks',           defaultOn: true },
+  { id: 'partners',   label: 'Top 10 Partners',      defaultOn: true },
+  { id: 'reorders',   label: 'Upcoming Reorders',    defaultOn: true },
+  { id: 'invoices',   label: 'Recent Invoices',      defaultOn: true },
+  { id: 'mission',    label: 'Mission Progress',     defaultOn: false },
 ]
+
+// Revenue from an order excluding shipping line items
+function orderRevenueExShipping(o) {
+  return (o.line_items || []).reduce((s, li) => {
+    if (li.desc?.toLowerCase().includes('shipping')) return s
+    return s + (Number(li.qty) || 0) * (Number(li.price) || 0)
+  }, 0)
+}
+
+// Conversion gauge — SVG semicircle
+function ConversionGauge({ ordering, total, sampleSent, prospects }) {
+  const pct = total > 0 ? (ordering / total) * 100 : 0
+  // Arc geometry: semicircle from 180° to 0°, radius 60, centre (80,85)
+  const angle = Math.PI * (1 - pct / 100)
+  const x = 80 + 60 * Math.cos(angle)
+  const y = 85 - 60 * Math.sin(angle)
+  const largeArc = pct > 50 ? 0 : 0
+  return (
+    <div>
+      <svg viewBox="0 0 160 100" className="w-full h-auto">
+        <path d="M20,85 A60,60 0 0,1 140,85" fill="none" stroke="#EEF3EC" strokeWidth="14" strokeLinecap="round" />
+        {pct > 0 && (
+          <path
+            d={`M20,85 A60,60 0 ${largeArc},1 ${x.toFixed(1)},${y.toFixed(1)}`}
+            fill="none" stroke="#3D6034" strokeWidth="14" strokeLinecap="round"
+          />
+        )}
+        <text x="80" y="70" textAnchor="middle" fontSize="24" fontWeight="700" fill="#111">{pct.toFixed(0)}%</text>
+        <text x="80" y="88" textAnchor="middle" fontSize="9" fill="#9ca3af">{ordering} of {total} converted</text>
+      </svg>
+      <div className="flex justify-between text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#3D6034] inline-block" />Ordering {ordering}</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-300 inline-block" />Sample {sampleSent}</span>
+        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />Prospect {prospects}</span>
+      </div>
+    </div>
+  )
+}
 
 // Animated count-up — rolls the number from its previous value to the target
 function useCountUp(target, duration = 2200) {
@@ -267,6 +308,33 @@ export default function Dashboard() {
   const totalRevenueAllTime = historicalRevenue + crmRevenue
   const totalOrdersAllTime = historicalOrders + crmOrders
 
+  // Revenue excluding shipping: historical (kg × price, no shipping) + CRM line items minus shipping
+  const crmRevenueExShipping = orders.reduce((s, o) => s + orderRevenueExShipping(o), 0)
+  const totalRevenueExShipping = historicalRevenue + crmRevenueExShipping
+
+  // KG trend — CRM kg this month vs last month
+  const kgThisMonth = orders
+    .filter(o => o.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd'))
+    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
+      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+  const kgLastMonth = orders
+    .filter(o => {
+      const lmStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
+      const lmEnd = format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
+      return o.date >= lmStart && o.date <= lmEnd
+    })
+    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
+      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+  const kgTrend = kgLastMonth > 0 ? ((kgThisMonth - kgLastMonth) / kgLastMonth) * 100 : null
+
+  // Conversion: partners who have placed at least one order (historical or CRM)
+  const crmPartnerIdsSet = new Set(orders.map(o => o.partner_id).filter(Boolean))
+  const orderingPartners = partners.filter(p =>
+    (Number(p.total_orders) || 0) > 0 || crmPartnerIdsSet.has(p.id)
+  ).length
+  const sampleSentCount = partners.filter(p => p.status === 'sample_sent').length
+  const prospectCount = partners.filter(p => p.status === 'prospect').length
+
   // Outstanding — CRM invoices unpaid + overdue
   const outstanding = orders
     .filter(o => getOrderStatus(o) !== 'paid')
@@ -357,6 +425,94 @@ export default function Dashboard() {
 
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
+  // ── Daily revenue chart ──
+  const [dailyMonthOffset, setDailyMonthOffset] = useState(0) // 0 = current month
+  const dailyMonth = subMonths(new Date(), dailyMonthOffset)
+  const daysInMonth = getDaysInMonth(dailyMonth)
+  const dailyMonthPrefix = format(dailyMonth, 'yyyy-MM')
+  const dailyData = Array.from({ length: daysInMonth }, (_, i) => {
+    const dayStr = `${dailyMonthPrefix}-${String(i + 1).padStart(2, '0')}`
+    return orders
+      .filter(o => o.date === dayStr)
+      .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+  })
+  const dailyChartData = {
+    labels: Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    datasets: [{
+      data: dailyData,
+      borderColor: '#3D6034',
+      backgroundColor: 'rgba(61,96,52,0.08)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      pointHoverBackgroundColor: '#3D6034',
+      borderWidth: 2.5,
+    }],
+  }
+  const dailyChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: items => `${items[0].label} ${format(dailyMonth, 'MMM yyyy')}`,
+          label: ctx => `£${ctx.raw.toFixed(2)}`,
+        },
+      },
+    },
+    scales: {
+      y: { ticks: { callback: v => `£${v}` }, grid: { color: '#f3f4f6' }, border: { display: false } },
+      x: { grid: { display: false }, border: { display: false }, ticks: { maxTicksLimit: 10 } },
+    },
+  }
+
+  // ── CSV report download ──
+  function downloadReport() {
+    const esc = v => {
+      const s = String(v ?? '')
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const lines = []
+    lines.push(`Kyos Matcha CRM Report — ${format(new Date(), 'd MMM yyyy HH:mm')}`)
+    lines.push('')
+    lines.push('PARTNERS')
+    lines.push('Name,Status,Contact,Email,Price/KG,Total Orders,Total KG,Total Spent,Last Order')
+    partners.forEach(p => {
+      const crmOrdersFor = orders.filter(o => o.partner_id === p.id)
+      const crmKgFor = crmOrdersFor.reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
+        li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+      const crmSpentFor = crmOrdersFor.reduce((s, o) => s + (Number(o.total) || 0), 0)
+      const histKg = Number(p.total_kg) || 0
+      const histOrders = Number(p.total_orders) || 0
+      const histSpent = histKg * (Number(p.price_per_kg) || 0)
+      const lastOrder = [p.last_order_date, ...crmOrdersFor.map(o => o.date)].filter(Boolean).sort().pop() || ''
+      lines.push([
+        esc(p.name), esc(p.status), esc(p.contact_name), esc(p.email),
+        p.price_per_kg || '', histOrders + crmOrdersFor.length,
+        (histKg + crmKgFor).toFixed(1), (histSpent + crmSpentFor).toFixed(2), lastOrder,
+      ].join(','))
+    })
+    lines.push('')
+    lines.push('INVOICES')
+    lines.push('Invoice #,Partner,Date,Subtotal,Total,Status,PDF URL')
+    orders.forEach(o => {
+      lines.push([
+        esc(o.invoice_number), esc(o.partner_name), o.date || '',
+        (Number(o.subtotal) || 0).toFixed(2), (Number(o.total) || 0).toFixed(2),
+        getOrderStatus(o), esc(o.invoice_pdf_url),
+      ].join(','))
+    })
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `kyos-crm-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-2 border-[#3D6034] border-t-transparent rounded-full animate-spin" />
@@ -373,25 +529,97 @@ export default function Dashboard() {
         today={today}
       />
 
-      {/* ── Customise button ── */}
+      {/* ── Top bar: customise + download report ── */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-400">{Object.values(prefs).filter(Boolean).length} of {WIDGETS.length} widgets showing</p>
-        <button
-          onClick={() => setCustomising(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <Settings2 size={13} /> Customise Dashboard
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCustomising(true)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Settings2 size={13} /> Customise
+          </button>
+          <button
+            onClick={downloadReport}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-[#3D6034] rounded-lg hover:bg-[#2E4A27] transition-colors"
+          >
+            <Download size={13} /> Download Report
+          </button>
+        </div>
       </div>
 
       {/* ── KPI Cards ── */}
       {prefs.kpis && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <KpiCard label="Active Partners" value={activePartners} sub={`${partners.length} total`} icon={Users} />
-          <KpiCard label="Total KG Sold" value={`${totalKgAllTime.toFixed(1)}kg`} sub="from all invoices" icon={Package} color="#2563eb" />
-          <KpiCard label="Total Invoiced" value={formatCurrency(totalRevenueAllTime)} sub={`${totalOrdersAllTime} orders`} icon={TrendingUp} trend={revTrend} />
-          <KpiCard label="Paid Revenue" value={formatCurrency(totalPaid)} sub="settled invoices" icon={ShoppingBag} color="#3D6034" />
-          <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue" icon={AlertCircle} color="#dc2626" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard
+            label="Total KG Sold"
+            value={`${totalKgAllTime.toFixed(1)}kg`}
+            sub="historical + CRM"
+            icon={Package}
+            trend={kgTrend}
+          />
+          <KpiCard
+            label="Total Revenue"
+            value={formatCurrency(totalRevenueExShipping)}
+            sub="shipping excluded"
+            icon={TrendingUp}
+            color="#0F6E56"
+          />
+          <KpiCard
+            label="Partners Ordering"
+            value={orderingPartners}
+            sub={`of ${partners.length} on the list`}
+            icon={Users}
+            color="#534AB7"
+          />
+          <KpiCard
+            label="Outstanding"
+            value={formatCurrency(outstanding)}
+            sub="unpaid + overdue"
+            icon={AlertCircle}
+            color="#dc2626"
+          />
+        </div>
+      )}
+
+      {/* ── Daily Revenue + Conversion ── */}
+      {(prefs.daily || prefs.conversion) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {prefs.daily && (
+            <div className="card p-5 lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Daily Revenue</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">CRM invoices · shipping excluded</p>
+                </div>
+                <select
+                  className="input text-xs py-1.5 w-36"
+                  value={dailyMonthOffset}
+                  onChange={e => setDailyMonthOffset(Number(e.target.value))}
+                >
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <option key={i} value={i}>{format(subMonths(new Date(), i), 'MMMM yyyy')}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="h-52">
+                <Line data={dailyChartData} options={dailyChartOptions} />
+              </div>
+            </div>
+          )}
+
+          {prefs.conversion && (
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold text-gray-900">Conversion</h2>
+              <p className="text-xs text-gray-400 mt-0.5 mb-3">Partners who placed an order</p>
+              <ConversionGauge
+                ordering={orderingPartners}
+                total={partners.length}
+                sampleSent={sampleSentCount}
+                prospects={prospectCount}
+              />
+            </div>
+          )}
         </div>
       )}
 
