@@ -76,8 +76,8 @@ function HeroBanner({ totalKg, activePartners, today }) {
         </div>
       </div>
 
-      {/* Centre — animated counter */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+      {/* Counter — positioned in the upper area so products stay visible */}
+      <div className="absolute inset-x-0 flex flex-col items-center text-center px-4" style={{ top: '18%' }}>
         <p
           className="text-white font-bold tracking-tight tabular-nums"
           style={{ fontSize: 'clamp(56px, 7vw, 96px)', lineHeight: 1, textShadow: '0 2px 28px rgba(0,0,0,0.45)' }}
