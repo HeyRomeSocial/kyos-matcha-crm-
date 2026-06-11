@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, 'Segoe UI', sans-serif; }
+  body { width: 320px; background: #fff; }
+  .header { background: #3D6034; color: #fff; padding: 14px 16px; display: flex; align-items: center; gap: 8px; }
+  .header h1 { font-size: 14px; font-weight: 600; }
+  .body { padding: 14px 16px; }
+  label { display: block; font-size: 11px; font-weight: 600; color: #6b7280; margin: 10px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; font-size: 13px;
+    border: 1px solid #e5e7eb; border-radius: 8px; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #3D6034; }
+  textarea { resize: none; }
+  button {
+    width: 100%; margin-top: 14px; padding: 10px; font-size: 13px; font-weight: 600;
+    background: #3D6034; color: #fff; border: none; border-radius: 8px; cursor: pointer;
+  }
+  button:hover { background: #2E4A27; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .msg { font-size: 12px; text-align: center; margin-top: 10px; min-height: 16px; }
+  .msg.ok { color: #3D6034; font-weight: 600; }
+  .msg.err { color: #dc2626; }
+  .signout { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 11px; cursor: pointer; width: auto; margin: 0; padding: 0; font-weight: 400; }
+  .signout:hover { color: #fff; background: none; }
+  .spacer { flex: 1; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <span style="font-size:16px">🍵</span>
+    <h1>Add to Kyos CRM</h1>
+    <span class="spacer"></span>
+    <button class="signout" id="signout" style="display:none">Sign out</button>
+  </div>
+
+  <!-- Login view -->
+  <div class="body" id="login-view" style="display:none">
+    <label>Email</label>
+    <input type="email" id="login-email" placeholder="you@kyosmatcha.com">
+    <label>Password</label>
+    <input type="password" id="login-password" placeholder="••••••••">
+    <button id="login-btn">Sign in</button>
+    <p class="msg" id="login-msg"></p>
+  </div>
+
+  <!-- Add prospect view -->
+  <div class="body" id="form-view" style="display:none">
+    <label>Business Name *</label>
+    <input type="text" id="f-name" placeholder="Cafe name">
+    <label>Location</label>
+    <input type="text" id="f-location" placeholder="e.g. Manchester">
+    <label>Instagram</label>
+    <input type="text" id="f-instagram" placeholder="@handle">
+    <label>Email</label>
+    <input type="email" id="f-email" placeholder="hello@cafe.com">
+    <label>Channel</label>
+    <select id="f-channel">
+      <option value="instagram">Instagram</option>
+      <option value="email">Email</option>
+      <option value="phone">Phone</option>
+      <option value="referral">Referral</option>
+      <option value="event">Event</option>
+      <option value="other">Other</option>
+    </select>
+    <label>Notes</label>
+    <textarea id="f-notes" rows="2" placeholder="Found via…"></textarea>
+    <button id="add-btn">+ Add to Outreach</button>
+    <p class="msg" id="form-msg"></p>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

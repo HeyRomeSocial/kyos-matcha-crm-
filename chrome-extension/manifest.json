@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Kyos Matcha CRM — Add Prospect",
+  "version": "1.0",
+  "description": "Add cafe prospects to the Kyos Matcha CRM outreach pipeline from any website.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Add to Kyos CRM"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://xubklufhuixljduceevm.supabase.co/*"],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

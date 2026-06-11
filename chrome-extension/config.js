@@ -1,0 +1,3 @@
+// Supabase connection — same project as the CRM
+const SUPABASE_URL = 'https://xubklufhuixljduceevm.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1YmtsdWZodWl4bGpkdWNlZXZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTM0NTAsImV4cCI6MjA5NjIyOTQ1MH0.gZdCabfP2tU3wgL7NWAD0dAedk3ijKQ2RRc_y3oazOY'
