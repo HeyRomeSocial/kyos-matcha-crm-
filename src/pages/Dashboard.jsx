@@ -24,7 +24,7 @@ const WIDGETS = [
   { id: 'chart',      label: '12-Month Revenue',     defaultOn: true },
   { id: 'goals',      label: 'Monthly Goals',        defaultOn: true },
   { id: 'tasks',      label: 'Open Tasks',           defaultOn: true },
-  { id: 'partners',   label: 'Top 10 Partners',      defaultOn: true },
+  { id: 'partners',   label: 'Top 5 Partners',      defaultOn: true },
   { id: 'reorders',   label: 'Upcoming Reorders',    defaultOn: true },
   { id: 'invoices',   label: 'Recent Invoices',      defaultOn: true },
   { id: 'mission',    label: 'Mission Progress',     defaultOn: false },
@@ -294,6 +294,7 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([])
   const [currentGoal, setCurrentGoal] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [hoverOrder, setHoverOrder] = useState(null)
 
   function toggleWidget(id, val) {
     setPrefs(p => {
@@ -439,7 +440,7 @@ export default function Dashboard() {
     .sort((a, b) => a.next_expected_order.localeCompare(b.next_expected_order))
     .slice(0, 8)
 
-  // Top 10 partners — calculated live from orders
+  // Top 5 partners — calculated live from orders
   const partnerRevMap = orders.reduce((acc, o) => {
     if (!o.partner_id) return acc
     acc[o.partner_id] = acc[o.partner_id] || { revenue: 0, kg: 0, orders: 0, name: o.partner_name }
@@ -452,7 +453,7 @@ export default function Dashboard() {
   const topPartners = Object.entries(partnerRevMap)
     .map(([id, v]) => ({ id, ...v }))
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 10)
+    .slice(0, 5)
   const maxRevenue = topPartners[0]?.revenue || 1
 
   // Mission milestones
@@ -762,7 +763,7 @@ export default function Dashboard() {
           {prefs.partners && (
             <div className="card overflow-hidden lg:col-span-2">
               <div className="p-5 border-b border-gray-100">
-                <SectionHeader title="Top 10 Partners by Revenue" sub="Calculated live from all invoices" linkTo="/partners" navigate={navigate} />
+                <SectionHeader title="Top 5 Partners by Revenue" sub="Calculated live from all invoices" linkTo="/partners" navigate={navigate} />
               </div>
               <div className="divide-y divide-gray-50">
                 {topPartners.length === 0 ? (
@@ -875,8 +876,46 @@ export default function Dashboard() {
               {orders.slice(0, 6).length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400">No invoices yet</td></tr>
               ) : orders.slice(0, 6).map(order => (
-                <tr key={order.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                  <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
+                <tr
+                  key={order.id}
+                  className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer"
+                  onMouseEnter={() => setHoverOrder(order)}
+                  onMouseLeave={() => setHoverOrder(null)}
+                  onClick={() => navigate('/orders')}
+                >
+                  <td className="px-5 py-3 text-sm font-medium text-[#3D6034] relative">
+                    {order.invoice_number}
+                    {/* Hover preview card */}
+                    {hoverOrder?.id === order.id && (
+                      <div
+                        className="absolute left-24 top-0 z-40 w-72 bg-white rounded-xl border border-gray-200 shadow-xl p-4"
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-bold text-[#3D6034]">{order.invoice_number}</span>
+                          <StatusBadge status={getOrderStatus(order)} />
+                        </div>
+                        <p className="text-xs text-gray-500 mb-3">{order.partner_name} · {formatDate(order.date)}</p>
+                        <div className="space-y-1.5 mb-3">
+                          {(order.line_items || []).map((li, i) => (
+                            <div key={i} className="flex justify-between text-xs">
+                              <span className="text-gray-600 truncate mr-2">{li.desc} × {li.qty}</span>
+                              <span className="text-gray-900 font-medium flex-shrink-0">
+                                {formatCurrency((Number(li.qty) || 0) * (Number(li.price) || 0))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between text-sm font-bold border-t border-gray-100 pt-2">
+                          <span>Total</span>
+                          <span className="text-[#3D6034]">{formatCurrency(order.total)}</span>
+                        </div>
+                        {order.bill_email && (
+                          <p className="text-xs text-gray-400 mt-2">✉ {order.bill_email}</p>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
                   <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.date)}</td>
                   <td className="px-5 py-3 text-sm font-semibold text-gray-900">{formatCurrency(order.total)}</td>
