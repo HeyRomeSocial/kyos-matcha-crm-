@@ -61,37 +61,22 @@ function StatusBadge({ status }) {
   return <span className="badge-unpaid">Pending</span>
 }
 
-// Sleek paid/pending toggle switch
+// Single status pill — green Paid / red Pending, click to toggle
 function PaidToggle({ order, onToggle }) {
   const isPaid = order.status === 'paid'
   return (
     <button
       onClick={() => onToggle(order)}
-      className="relative inline-flex items-center rounded-full p-0.5 transition-colors duration-200"
+      className="inline-flex items-center justify-center rounded-full text-xs font-semibold transition-colors duration-150"
       style={{
-        width: '120px',
-        height: '28px',
-        backgroundColor: isPaid ? '#EEF3EC' : '#FEF6E7',
-        border: `1px solid ${isPaid ? '#b3d0ab' : '#f5d9a8'}`,
+        width: '84px',
+        height: '26px',
+        backgroundColor: isPaid ? '#3D6034' : '#dc2626',
+        color: '#fff',
       }}
       title={isPaid ? 'Click to mark as pending' : 'Click to mark as paid'}
     >
-      {/* Sliding pill */}
-      <span
-        className="absolute rounded-full text-xs font-semibold flex items-center justify-center transition-all duration-200 shadow-sm"
-        style={{
-          width: '58px',
-          height: '22px',
-          left: isPaid ? 'calc(100% - 61px)' : '3px',
-          backgroundColor: isPaid ? '#3D6034' : '#f59e0b',
-          color: '#fff',
-        }}
-      >
-        {isPaid ? 'Paid' : 'Pending'}
-      </span>
-      {/* Static labels behind */}
-      <span className="w-1/2 text-center text-[10px] font-medium" style={{ color: isPaid ? '#b45309' : 'transparent' }}>Pending</span>
-      <span className="w-1/2 text-center text-[10px] font-medium" style={{ color: isPaid ? 'transparent' : '#3D6034' }}>Paid</span>
+      {isPaid ? 'Paid' : 'Pending'}
     </button>
   )
 }
@@ -282,7 +267,6 @@ export default function OrdersLog() {
                   { label: 'Partner',   key: 'partner' },
                   { label: 'Date',      key: 'date' },
                   { label: 'Total',     key: 'total' },
-                  { label: 'Status',    key: 'status' },
                   { label: 'PDF',       key: null },
                   { label: 'Payment',   key: null },
                   { label: '',          key: null },
@@ -301,9 +285,9 @@ export default function OrdersLog() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-5 py-12 text-center text-sm text-gray-400">No orders found</td></tr>
+                <tr><td colSpan={7} className="px-5 py-12 text-center text-sm text-gray-400">No orders found</td></tr>
               ) : filtered.map(order => {
                 const status = getOrderStatus(order)
                 const isOverdue = status === 'overdue'
@@ -316,7 +300,6 @@ export default function OrdersLog() {
                     <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
                     <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.date)}</td>
                     <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
-                    <td className="px-5 py-3"><StatusBadge status={status} /></td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <button
