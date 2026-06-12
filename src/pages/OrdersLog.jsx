@@ -53,11 +53,47 @@ function PdfViewerModal({ order, onClose }) {
 }
 
 const FILTERS = ['all', 'paid', 'unpaid', 'overdue']
+const FILTER_LABELS = { all: 'All', paid: 'Paid', unpaid: 'Pending', overdue: 'Overdue' }
 
 function StatusBadge({ status }) {
   if (status === 'paid') return <span className="badge-paid">Paid</span>
   if (status === 'overdue') return <span className="badge-overdue">Overdue</span>
-  return <span className="badge-unpaid">Unpaid</span>
+  return <span className="badge-unpaid">Pending</span>
+}
+
+// Sleek paid/pending toggle switch
+function PaidToggle({ order, onToggle }) {
+  const isPaid = order.status === 'paid'
+  return (
+    <button
+      onClick={() => onToggle(order)}
+      className="relative inline-flex items-center rounded-full p-0.5 transition-colors duration-200"
+      style={{
+        width: '120px',
+        height: '28px',
+        backgroundColor: isPaid ? '#EEF3EC' : '#FEF6E7',
+        border: `1px solid ${isPaid ? '#b3d0ab' : '#f5d9a8'}`,
+      }}
+      title={isPaid ? 'Click to mark as pending' : 'Click to mark as paid'}
+    >
+      {/* Sliding pill */}
+      <span
+        className="absolute rounded-full text-xs font-semibold flex items-center justify-center transition-all duration-200 shadow-sm"
+        style={{
+          width: '58px',
+          height: '22px',
+          left: isPaid ? 'calc(100% - 61px)' : '3px',
+          backgroundColor: isPaid ? '#3D6034' : '#f59e0b',
+          color: '#fff',
+        }}
+      >
+        {isPaid ? 'Paid' : 'Pending'}
+      </span>
+      {/* Static labels behind */}
+      <span className="w-1/2 text-center text-[10px] font-medium" style={{ color: isPaid ? '#b45309' : 'transparent' }}>Pending</span>
+      <span className="w-1/2 text-center text-[10px] font-medium" style={{ color: isPaid ? 'transparent' : '#3D6034' }}>Paid</span>
+    </button>
+  )
 }
 
 function ConfirmDialog({ message, onConfirm, onCancel }) {
@@ -125,7 +161,7 @@ export default function OrdersLog() {
       paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
     }).eq('id', order.id)
     if (error) { toast.error(error.message); return }
-    toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Marked as unpaid')
+    toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Moved back to pending')
 
     // Auto-upload paid invoice PDF to Google Drive (if webhook configured)
     if (newStatus === 'paid' && order.invoice_pdf_url) {
@@ -229,7 +265,7 @@ export default function OrdersLog() {
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {f === 'all' ? `All (${counts.all})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${counts[f]})`}
+              {`${FILTER_LABELS[f]} (${counts[f]})`}
             </button>
           ))}
         </div>
@@ -248,7 +284,7 @@ export default function OrdersLog() {
                   { label: 'Total',     key: 'total' },
                   { label: 'Status',    key: 'status' },
                   { label: 'PDF',       key: null },
-                  { label: 'Actions',   key: null },
+                  { label: 'Payment',   key: null },
                   { label: '',          key: null },
                 ].map(({ label, key }) => (
                   <th
@@ -305,19 +341,7 @@ export default function OrdersLog() {
                       </div>
                     </td>
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => togglePaid(order)}
-                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
-                          order.status === 'paid'
-                            ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
-                            : 'text-[#3D6034] bg-[#EEF3EC] hover:bg-[#d8e8d4]'
-                        }`}
-                      >
-                        {order.status === 'paid'
-                          ? <><XCircle size={12} /> Mark Unpaid</>
-                          : <><CheckCircle size={12} /> Mark Paid</>
-                        }
-                      </button>
+                      <PaidToggle order={order} onToggle={togglePaid} />
                     </td>
                     <td className="px-5 py-3">
                       <button
