@@ -124,8 +124,31 @@ export default function OrdersLog() {
       status: newStatus,
       paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
     }).eq('id', order.id)
-    if (error) toast.error(error.message)
-    else toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Marked as unpaid')
+    if (error) { toast.error(error.message); return }
+    toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Marked as unpaid')
+
+    // Auto-upload paid invoice PDF to Google Drive (if webhook configured)
+    if (newStatus === 'paid' && order.invoice_pdf_url) {
+      try {
+        const { data: s } = await supabase.from('settings').select('drive_webhook_url').eq('id', 1).single()
+        if (s?.drive_webhook_url) {
+          fetch(s.drive_webhook_url, {
+            method: 'POST',
+            // Apps Script web apps don't return CORS headers — fire-and-forget
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+              invoice_number: order.invoice_number,
+              partner_name: order.partner_name,
+              pdf_url: order.invoice_pdf_url.split('?')[0],
+              date: order.date,
+            }),
+          }).then(() => {
+            toast.success(`${order.invoice_number} saved to Google Drive`, { icon: '📁' })
+          }).catch(() => {})
+        }
+      } catch {}
+    }
   }
 
   async function deleteOrder(order) {
