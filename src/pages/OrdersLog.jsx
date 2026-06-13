@@ -203,7 +203,14 @@ export default function OrdersLog() {
             break
           }
           case 'partner': av = a.partner_name?.toLowerCase() || ''; bv = b.partner_name?.toLowerCase() || ''; break
-          case 'date':    av = a.date || ''; bv = b.date || ''; break
+          case 'date': {
+            // Tie-break same-date invoices by invoice number so order is always consecutive
+            const na = parseInt(a.invoice_number?.replace('KM-', '') || '0')
+            const nb = parseInt(b.invoice_number?.replace('KM-', '') || '0')
+            av = `${a.date || ''}-${String(na).padStart(6, '0')}`
+            bv = `${b.date || ''}-${String(nb).padStart(6, '0')}`
+            break
+          }
           case 'total':   av = a.total || 0; bv = b.total || 0; break
           case 'status':  av = getOrderStatus(a); bv = getOrderStatus(b); break
           default:        av = a.date || ''; bv = b.date || ''
