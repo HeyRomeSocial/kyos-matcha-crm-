@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react'
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
 
@@ -47,6 +47,58 @@ function PdfViewerModal({ order, onClose }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function PartnerHoverCard({ partner, orders }) {
+  if (!partner) return null
+  const partnerOrders = orders.filter(o => o.partner_id === partner.id)
+  const totalOrders = (Number(partner.total_orders) || 0) + partnerOrders.length
+  const crmKg = partnerOrders.reduce((s, o) =>
+    s + (o.line_items || []).reduce((a, li) => {
+      const desc = (li.desc || '').toLowerCase()
+      if (desc.includes('50g') || desc.includes('retail pouch')) return a + (Number(li.qty) || 0) * 0.05
+      if (desc.includes('matcha')) return a + (Number(li.qty) || 0)
+      return a
+    }, 0), 0)
+  const totalKg = (Number(partner.total_kg) || 0) + crmKg
+  const lastOrder = [partner.last_order_date, ...partnerOrders.map(o => o.date)].filter(Boolean).sort().pop()
+
+  return (
+    <div className="absolute z-50 left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-xl p-3 pointer-events-none">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-gray-900 truncate">{partner.name}</p>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${partner.status === 'active' ? 'bg-[#EEF3EC] text-[#3D6034]' : 'bg-gray-100 text-gray-500'}`}>
+          {partner.status === 'active' ? 'Active' : partner.status}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs">
+          <span className="text-gray-400">Total Orders</span>
+          <span className="font-medium text-gray-700">{totalOrders}</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span className="text-gray-400">Total KG</span>
+          <span className="font-medium text-gray-700">{totalKg.toFixed(2)}kg</span>
+        </div>
+        {partner.price_per_kg > 0 && (
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-400">Price / KG</span>
+            <span className="font-medium text-gray-700">{formatCurrency(partner.price_per_kg)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-xs">
+          <span className="text-gray-400">Last Order</span>
+          <span className="font-medium text-gray-700">{lastOrder ? formatDate(lastOrder) : '—'}</span>
+        </div>
+        {partner.contact_name && (
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-400">Contact</span>
+            <span className="font-medium text-gray-700">{partner.contact_name}</span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -102,6 +154,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
 
 export default function OrdersLog() {
   const [orders, setOrders] = useState([])
+  const [partners, setPartners] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -110,6 +163,7 @@ export default function OrdersLog() {
   const [viewOrder, setViewOrder] = useState(null)
   const [sortKey, setSortKey] = useState('date')
   const [sortDir, setSortDir] = useState('desc')
+  const [hoveredPartner, setHoveredPartner] = useState(null)
 
   function handleSort(key) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -122,11 +176,12 @@ export default function OrdersLog() {
   }
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('date', { ascending: false })
-    setOrders(data || [])
+    const [{ data: ordersData }, { data: partnersData }] = await Promise.all([
+      supabase.from('orders').select('*').order('date', { ascending: false }),
+      supabase.from('partners').select('id,name,status,total_orders,total_kg,price_per_kg,last_order_date,contact_name'),
+    ])
+    setOrders(ordersData || [])
+    setPartners(partnersData || [])
     setLoading(false)
   }, [])
 
@@ -304,7 +359,21 @@ export default function OrdersLog() {
                     className={`border-b border-gray-50 last:border-0 ${isOverdue ? 'bg-red-50/40' : 'hover:bg-gray-50/50'}`}
                   >
                     <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
-                    <td className="px-5 py-3 text-sm text-gray-700">{order.partner_name}</td>
+                    <td className="px-5 py-3 text-sm text-gray-700 relative">
+                      <span
+                        className="cursor-default hover:text-[#3D6034] hover:underline decoration-dotted transition-colors"
+                        onMouseEnter={() => setHoveredPartner(order.partner_id)}
+                        onMouseLeave={() => setHoveredPartner(null)}
+                      >
+                        {order.partner_name}
+                      </span>
+                      {hoveredPartner === order.partner_id && (
+                        <PartnerHoverCard
+                          partner={partners.find(p => p.id === order.partner_id)}
+                          orders={orders}
+                        />
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.date)}</td>
                     <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
                     <td className="px-5 py-3">
