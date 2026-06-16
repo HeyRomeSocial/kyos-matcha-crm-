@@ -59,7 +59,7 @@ function PartnerHoverCard({ partner, orders }) {
   const crmKg = partnerOrders.reduce((s, o) =>
     s + (o.line_items || []).reduce((a, li) => {
       const desc = (li.desc || '').toLowerCase()
-      if (desc.includes('50g') || desc.includes('retail pouch')) return a + (Number(li.qty) || 0) * 0.05
+      if (desc.includes('50g') || desc.includes('retail pouch')) return a + (Number(li.qty) || 0) * 0.1
       if (desc.includes('matcha')) return a + (Number(li.qty) || 0)
       return a
     }, 0), 0)
