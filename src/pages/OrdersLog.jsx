@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
 
@@ -133,6 +133,50 @@ function PaidToggle({ order, onToggle }) {
   )
 }
 
+function NotesModal({ order, onClose, onSaved }) {
+  const [note, setNote] = useState(order.notes || '')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    const { error } = await supabase.from('orders').update({ notes: note.trim() || null }).eq('id', order.id)
+    if (error) { toast.error(error.message); setSaving(false); return }
+    toast.success('Note saved')
+    onSaved(order.id, note.trim() || null)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Note — {order.invoice_number}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{order.partner_name}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+            <X size={16} />
+          </button>
+        </div>
+        <textarea
+          className="input w-full resize-none text-sm"
+          rows={4}
+          placeholder="e.g. Follow up sent, waiting on payment…"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={save} disabled={saving} className="btn-primary text-sm">
+            {saving ? 'Saving…' : 'Save Note'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ConfirmDialog({ message, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
@@ -164,6 +208,7 @@ export default function OrdersLog() {
   const [sortKey, setSortKey] = useState('date')
   const [sortDir, setSortDir] = useState('desc')
   const [hoveredPartner, setHoveredPartner] = useState(null)
+  const [noteOrder, setNoteOrder] = useState(null)
 
   function handleSort(key) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -413,6 +458,15 @@ export default function OrdersLog() {
                     </td>
                     <td className="px-5 py-3">
                       <button
+                        onClick={() => setNoteOrder(order)}
+                        className={`p-1.5 rounded-lg transition-colors ${order.notes ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'}`}
+                        title={order.notes || 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
+                    </td>
+                    <td className="px-5 py-3">
+                      <button
                         onClick={() => setConfirmDelete(order)}
                         className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                         title="Delete invoice"
@@ -437,6 +491,17 @@ export default function OrdersLog() {
           order={editOrder}
           onClose={() => setEditOrder(null)}
           onSaved={() => { setEditOrder(null); load() }}
+        />
+      )}
+
+      {noteOrder && (
+        <NotesModal
+          order={noteOrder}
+          onClose={() => setNoteOrder(null)}
+          onSaved={(id, note) => {
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, notes: note } : o))
+            setNoteOrder(null)
+          }}
         />
       )}
 
