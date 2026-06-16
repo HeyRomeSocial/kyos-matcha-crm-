@@ -152,7 +152,7 @@ export default function InvoiceGenerator() {
     })
     const items = []
     items.push(newItem('Premium Matcha', 1, partner.price_per_kg || 0))
-    items.push(newItem('Shipping', 1, partner.shipping_fee || 0))
+    items.push(newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 0))
     setLineItems(items)
   }
 
@@ -172,7 +172,7 @@ export default function InvoiceGenerator() {
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'))
     setSelectedPartner(null)
     setBillTo({ name: '', address: '', contact: '', email: '' })
-    setLineItems([newItem('Premium Matcha', 1, 0), newItem('Shipping', 1, 0)])
+    setLineItems([newItem('Premium Matcha', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
     setSavedPdfUrl(null)
   }
 
