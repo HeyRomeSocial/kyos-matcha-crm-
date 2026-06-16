@@ -33,9 +33,9 @@ export function reorderUrgency(nextExpectedOrder) {
 // Starter kits and non-matcha lines contribute 0 kg.
 export function lineItemKg(li) {
   const desc = (li.desc || '').toLowerCase()
-  // Any 50g item (retail pouches, resale pouches) = 0.1 kg each
+  // Any 50g item (retail pouches, resale pouches) = 0.05 kg each
   if (desc.includes('50g') || desc.includes('retail pouch') || (desc.includes('pouch') && !desc.includes('matcha')))
-    return (Number(li.qty) || 0) * 0.1
+    return (Number(li.qty) || 0) * 0.05
   if (desc.includes('matcha')) return Number(li.qty) || 0
   return 0
 }
