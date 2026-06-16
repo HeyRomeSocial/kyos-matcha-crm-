@@ -341,7 +341,7 @@ export default function Dashboard() {
   const crmKg = orders.reduce((s, o) =>
     s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0)
   , 0)
-  const crmRevenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const crmRevenue = orders.filter(o => o.status === 'paid').reduce((s, o) => s + (Number(o.total) || 0), 0)
   const crmOrders = orders.length
 
   // Combined totals = historical + CRM
@@ -350,7 +350,7 @@ export default function Dashboard() {
   const totalOrdersAllTime = historicalOrders + crmOrders
 
   // Revenue excluding shipping: historical (kg × price, no shipping) + CRM line items minus shipping
-  const crmRevenueExShipping = orders.reduce((s, o) => s + orderRevenueExShipping(o), 0)
+  const crmRevenueExShipping = orders.filter(o => o.status === 'paid').reduce((s, o) => s + orderRevenueExShipping(o), 0)
   const totalRevenueExShipping = historicalRevenue + crmRevenueExShipping
 
   // Retail pouches sold (50g units) across all CRM orders
@@ -615,7 +615,7 @@ export default function Dashboard() {
           <KpiCard
             label="Total Revenue"
             value={formatCurrency(totalRevenueExShipping)}
-            sub="shipping excluded"
+            sub="paid invoices · excl. shipping"
             icon={TrendingUp}
             color="#0F6E56"
           />
