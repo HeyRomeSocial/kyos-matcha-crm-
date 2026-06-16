@@ -105,7 +105,7 @@ export default function InvoiceGenerator() {
   const [selectedPartner, setSelectedPartner] = useState(null)
   const [invoiceNumber, setInvoiceNumber] = useState('KM-167')
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [lineItems, setLineItems] = useState([newItem('Premium Matcha', 1, 0), newItem('Shipping', 1, 0)])
+  const [lineItems, setLineItems] = useState([newItem('Premium Matcha', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
   const [saving, setSaving] = useState(false)
   const [savedPdfUrl, setSavedPdfUrl] = useState(null)
   const [billTo, setBillTo] = useState({ name: '', address: '', contact: '', email: '' })
