@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { formatCurrency, calcNextOrder } from '../lib/utils'
+import { formatCurrency, calcNextOrder, lineItemKg } from '../lib/utils'
 import { Plus, Trash2, Save, Search, X, Mail } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -252,7 +252,7 @@ kyosmatcha.com`
 
       // Update partner stats
       const newTotalOrders = (selectedPartner.total_orders || 0) + 1
-      const matchaKg = lineItems.reduce((s, i) => i.desc?.toLowerCase().includes('matcha') ? s + i.qty : s, 0)
+      const matchaKg = lineItems.reduce((s, i) => s + lineItemKg(i), 0)
       const newTotalKg = (selectedPartner.total_kg || 0) + matchaKg
       const newTotalSpent = (selectedPartner.total_spent || 0) + total
       const newNextOrder = calcNextOrder(invoiceDate, selectedPartner.reorder_frequency_days)
@@ -369,12 +369,26 @@ kyosmatcha.com`
               </div>
             ))}
           </div>
-          <button
-            onClick={() => setLineItems(i => [...i, newItem()])}
-            className="flex items-center gap-1.5 text-xs text-[#3D6034] hover:text-[#2E4A27] font-medium"
-          >
-            <Plus size={13} /> Add line item
-          </button>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setLineItems(i => [...i, newItem()])}
+              className="flex items-center gap-1.5 text-xs text-[#3D6034] hover:text-[#2E4A27] font-medium"
+            >
+              <Plus size={13} /> Add line item
+            </button>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('Retail Pouch 50g', 1, 0)])}
+              className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Retail Pouch 50g
+            </button>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('Starter Kit', 1, 0)])}
+              className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Starter Kit
+            </button>
+          </div>
 
           <div className="border-t border-gray-100 pt-3 space-y-1">
             <div className="flex justify-between text-sm">

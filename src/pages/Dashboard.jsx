@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { formatCurrency, formatDate, getOrderStatus, reorderUrgency } from '../lib/utils'
+import { formatCurrency, formatDate, getOrderStatus, reorderUrgency, lineItemKg } from '../lib/utils'
 import {
   Users, Package, TrendingUp, AlertCircle, ShoppingBag, Plus,
   Settings2, X, ChevronRight, CheckCircle, Circle, Clock
@@ -339,9 +339,7 @@ export default function Dashboard() {
 
   // CRM orders — invoices created through this system
   const crmKg = orders.reduce((s, o) =>
-    s + (o.line_items || []).reduce((a, li) =>
-      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a
-    , 0)
+    s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0)
   , 0)
   const crmRevenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
   const crmOrders = orders.length
@@ -358,16 +356,14 @@ export default function Dashboard() {
   // KG trend — CRM kg this month vs last month
   const kgThisMonth = orders
     .filter(o => o.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd'))
-    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
-      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
   const kgLastMonth = orders
     .filter(o => {
       const lmStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
       const lmEnd = format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
       return o.date >= lmStart && o.date <= lmEnd
     })
-    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
-      li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
   const kgTrend = kgLastMonth > 0 ? ((kgThisMonth - kgLastMonth) / kgLastMonth) * 100 : null
 
   // Conversion: partners who have placed at least one order (historical or CRM)
@@ -445,8 +441,7 @@ export default function Dashboard() {
     if (!o.partner_id) return acc
     acc[o.partner_id] = acc[o.partner_id] || { revenue: 0, kg: 0, orders: 0, name: o.partner_name }
     acc[o.partner_id].revenue += Number(o.total) || 0
-    acc[o.partner_id].kg += (o.line_items || []).reduce((s, li) =>
-      li.desc?.toLowerCase().includes('matcha') ? s + (Number(li.qty) || 0) : s, 0)
+    acc[o.partner_id].kg += (o.line_items || []).reduce((s, li) => s + lineItemKg(li), 0)
     acc[o.partner_id].orders += 1
     return acc
   }, {})
@@ -524,8 +519,7 @@ export default function Dashboard() {
     lines.push('Name,Status,Contact,Email,Price/KG,Total Orders,Total KG,Total Spent,Last Order')
     partners.forEach(p => {
       const crmOrdersFor = orders.filter(o => o.partner_id === p.id)
-      const crmKgFor = crmOrdersFor.reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
-        li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+      const crmKgFor = crmOrdersFor.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
       const crmSpentFor = crmOrdersFor.reduce((s, o) => s + (Number(o.total) || 0), 0)
       const histKg = Number(p.total_kg) || 0
       const histOrders = Number(p.total_orders) || 0

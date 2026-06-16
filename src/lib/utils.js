@@ -28,6 +28,18 @@ export function reorderUrgency(nextExpectedOrder) {
   return null
 }
 
+// Returns the kg of matcha represented by a single line item.
+// Retail pouches are 50g each; all other matcha lines are qty = kg.
+// Starter kits and non-matcha lines contribute 0 kg.
+export function lineItemKg(li) {
+  const desc = (li.desc || '').toLowerCase()
+  // Any 50g item (retail pouches, resale pouches) = 0.05 kg each
+  if (desc.includes('50g') || desc.includes('retail pouch') || (desc.includes('pouch') && !desc.includes('matcha')))
+    return (Number(li.qty) || 0) * 0.05
+  if (desc.includes('matcha')) return Number(li.qty) || 0
+  return 0
+}
+
 export function getOrderStatus(order) {
   if (order.status === 'paid') return 'paid'
   const days = differenceInDays(new Date(), parseISO(order.date))
