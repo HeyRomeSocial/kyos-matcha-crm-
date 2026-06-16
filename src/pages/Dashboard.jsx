@@ -363,6 +363,13 @@ export default function Dashboard() {
     }, 0)
   , 0)
 
+  // Starter kits sold across all CRM orders
+  const totalStarterKitsSold = orders.reduce((s, o) =>
+    s + (o.line_items || []).reduce((a, li) =>
+      (li.desc || '').toLowerCase().includes('starter') ? a + (Number(li.qty) || 0) : a
+    , 0)
+  , 0)
+
   // KG trend — CRM kg this month vs last month
   const kgThisMonth = orders
     .filter(o => o.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd'))
@@ -632,6 +639,13 @@ export default function Dashboard() {
             sub="50g pouches · CRM orders"
             icon={ShoppingBag}
             color="#7C5C2E"
+          />
+          <KpiCard
+            label="Starter Kits Sold"
+            value={totalStarterKitsSold}
+            sub="kits · CRM orders"
+            icon={Package}
+            color="#B45309"
           />
         </div>
       )}
