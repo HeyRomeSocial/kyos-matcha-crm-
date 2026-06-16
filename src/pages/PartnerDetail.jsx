@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
+import { formatCurrency, formatDate, getOrderStatus, lineItemKg } from '../lib/utils'
 import PartnerModal from '../components/PartnerModal'
 import { ArrowLeft, Pencil, FileText } from 'lucide-react'
 
@@ -47,8 +47,7 @@ export default function PartnerDetail() {
   const historicalSpend = historicalKg * (Number(partner.price_per_kg) || 0)
 
   // CRM orders created in this system
-  const crmKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) =>
-    li.desc?.toLowerCase().includes('matcha') ? a + (Number(li.qty) || 0) : a, 0), 0)
+  const crmKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
   const crmSpend = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
   const crmOrders = orders.length
 
