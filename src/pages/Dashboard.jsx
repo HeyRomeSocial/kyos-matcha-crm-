@@ -353,6 +353,16 @@ export default function Dashboard() {
   const crmRevenueExShipping = orders.reduce((s, o) => s + orderRevenueExShipping(o), 0)
   const totalRevenueExShipping = historicalRevenue + crmRevenueExShipping
 
+  // Retail pouches sold (50g units) across all CRM orders
+  const totalPouchesSold = orders.reduce((s, o) =>
+    s + (o.line_items || []).reduce((a, li) => {
+      const desc = (li.desc || '').toLowerCase()
+      if (desc.includes('50g') || desc.includes('retail pouch') || (desc.includes('pouch') && !desc.includes('matcha')))
+        return a + (Number(li.qty) || 0)
+      return a
+    }, 0)
+  , 0)
+
   // KG trend — CRM kg this month vs last month
   const kgThisMonth = orders
     .filter(o => o.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd'))
@@ -615,6 +625,13 @@ export default function Dashboard() {
             sub="unpaid + overdue"
             icon={AlertCircle}
             color="#dc2626"
+          />
+          <KpiCard
+            label="Retail Pouches Sold"
+            value={totalPouchesSold}
+            sub="50g pouches · CRM orders"
+            icon={ShoppingBag}
+            color="#7C5C2E"
           />
         </div>
       )}
