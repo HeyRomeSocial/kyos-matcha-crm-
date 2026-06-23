@@ -12,7 +12,7 @@ import {
 } from 'chart.js'
 import { Bar, Line } from 'react-chartjs-2'
 import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO, getDaysInMonth } from 'date-fns'
-import { Download, Calendar } from 'lucide-react'
+import { Download, Calendar, DollarSign } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
 
@@ -410,6 +410,21 @@ export default function Dashboard() {
   const lastMonthRev = orders.filter(o => o.date >= lastMonthStart && o.date <= lastMonthEnd).reduce((s, o) => s + (o.total || 0), 0)
   const revTrend = lastMonthRev > 0 ? ((thisMonthRev - lastMonthRev) / lastMonthRev) * 100 : null
 
+  // Revenue MTD (paid only, excl. shipping)
+  const revMTD = orders
+    .filter(o => o.status === 'paid' && o.date >= thisMonthStart && o.date <= thisMonthEnd)
+    .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+  const revMTDLastMonth = orders
+    .filter(o => o.status === 'paid' && o.date >= lastMonthStart && o.date <= lastMonthEnd)
+    .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+  const revMTDTrend = revMTDLastMonth > 0 ? ((revMTD - revMTDLastMonth) / revMTDLastMonth) * 100 : null
+
+  // Revenue YTD (paid only, excl. shipping)
+  const yearStart = `${new Date().getFullYear()}-01-01`
+  const revYTD = orders
+    .filter(o => o.status === 'paid' && o.date >= yearStart)
+    .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+
   // Chart — 12 months
   const months = Array.from({ length: 12 }, (_, i) => {
     const d = subMonths(new Date(), 11 - i)
@@ -632,6 +647,28 @@ export default function Dashboard() {
             sub="unpaid + overdue"
             icon={AlertCircle}
             color="#dc2626"
+          />
+          <KpiCard
+            label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`}
+            value={formatCurrency(revMTD)}
+            sub="paid · excl. shipping · this month"
+            icon={DollarSign}
+            trend={revMTDTrend}
+            color="#0F6E56"
+          />
+          <KpiCard
+            label={`Revenue YTD — ${new Date().getFullYear()}`}
+            value={formatCurrency(revYTD)}
+            sub="paid · excl. shipping · this year"
+            icon={DollarSign}
+            color="#0F6E56"
+          />
+          <KpiCard
+            label="All Time Revenue"
+            value={formatCurrency(totalRevenueExShipping)}
+            sub="historical + paid CRM · excl. shipping"
+            icon={DollarSign}
+            color="#0F6E56"
           />
           <KpiCard
             label="Retail Pouches Sold"
