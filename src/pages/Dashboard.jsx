@@ -17,6 +17,18 @@ import { Download, Calendar, DollarSign } from 'lucide-react'
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
 
 // ─── Widget registry ──────────────────────────────────────────────────────────
+const KPI_CARDS = [
+  { id: 'kpi_kg',        label: 'Total KG Sold',        defaultOn: true },
+  { id: 'kpi_revenue',   label: 'Total Revenue',         defaultOn: true },
+  { id: 'kpi_partners',  label: 'Partners Ordering',     defaultOn: true },
+  { id: 'kpi_outstanding', label: 'Outstanding',         defaultOn: true },
+  { id: 'kpi_mtd',       label: 'Revenue MTD',           defaultOn: true },
+  { id: 'kpi_ytd',       label: 'Revenue YTD',           defaultOn: true },
+  { id: 'kpi_alltime',   label: 'All Time Revenue',      defaultOn: true },
+  { id: 'kpi_pouches',   label: 'Retail Pouches Sold',   defaultOn: true },
+  { id: 'kpi_kits',      label: 'Starter Kits Sold',     defaultOn: true },
+]
+
 const WIDGETS = [
   { id: 'kpis',       label: 'KPI Cards',            defaultOn: true },
   { id: 'daily',      label: 'Daily Revenue Chart',  defaultOn: true },
@@ -24,7 +36,7 @@ const WIDGETS = [
   { id: 'chart',      label: '12-Month Revenue',     defaultOn: true },
   { id: 'goals',      label: 'Monthly Goals',        defaultOn: true },
   { id: 'tasks',      label: 'Open Tasks',           defaultOn: true },
-  { id: 'partners',   label: 'Top 5 Partners',      defaultOn: true },
+  { id: 'partners',   label: 'Top 5 Partners',       defaultOn: true },
   { id: 'reorders',   label: 'Upcoming Reorders',    defaultOn: true },
   { id: 'invoices',   label: 'Recent Invoices',      defaultOn: true },
   { id: 'mission',    label: 'Mission Progress',     defaultOn: false },
@@ -185,9 +197,17 @@ function HeroBanner({ totalKg, activePartners, today }) {
 function loadPrefs() {
   try {
     const saved = localStorage.getItem('km_dashboard_widgets')
-    if (saved) return JSON.parse(saved)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // backfill any new KPI keys missing from older saved prefs
+      KPI_CARDS.forEach(k => { if (!(k.id in parsed)) parsed[k.id] = k.defaultOn })
+      return parsed
+    }
   } catch {}
-  return Object.fromEntries(WIDGETS.map(w => [w.id, w.defaultOn]))
+  return Object.fromEntries([
+    ...WIDGETS.map(w => [w.id, w.defaultOn]),
+    ...KPI_CARDS.map(k => [k.id, k.defaultOn]),
+  ])
 }
 
 function savePrefs(prefs) {
@@ -238,6 +258,14 @@ function StatusBadge({ status }) {
 }
 
 // ─── Customise Panel ──────────────────────────────────────────────────────────
+function Toggle({ on, onClick }) {
+  return (
+    <div className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer flex-shrink-0 ${on ? 'bg-[#3D6034]' : 'bg-gray-200'}`} onClick={onClick}>
+      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-1'}`} />
+    </div>
+  )
+}
+
 function CustomisePanel({ prefs, onChange, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -246,33 +274,39 @@ function CustomisePanel({ prefs, onChange, onClose }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Customise Dashboard</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Toggle widgets on or off</p>
+            <p className="text-xs text-gray-400 mt-0.5">Toggle widgets and KPI cards</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
             <X size={16} />
           </button>
         </div>
-        <div className="flex-1 p-5 space-y-2 overflow-y-auto">
-          {WIDGETS.map(w => (
-            <label
-              key={w.id}
-              className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-            >
-              <span className="text-sm font-medium text-gray-700">{w.label}</span>
-              <div
-                className={`w-10 h-6 rounded-full transition-colors relative ${prefs[w.id] ? 'bg-[#3D6034]' : 'bg-gray-200'}`}
-                onClick={() => onChange(w.id, !prefs[w.id])}
-              >
-                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${prefs[w.id] ? 'translate-x-5' : 'translate-x-1'}`} />
+        <div className="flex-1 overflow-y-auto">
+          {/* Widgets */}
+          <div className="p-5 space-y-2">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Widgets</p>
+            {WIDGETS.map(w => (
+              <div key={w.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+                <span className="text-sm font-medium text-gray-700">{w.label}</span>
+                <Toggle on={prefs[w.id]} onClick={() => onChange(w.id, !prefs[w.id])} />
               </div>
-            </label>
-          ))}
+            ))}
+          </div>
+
+          {/* KPI Cards sub-section */}
+          <div className="px-5 pb-5 space-y-2 border-t border-gray-100 pt-4">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">KPI Cards</p>
+            {KPI_CARDS.map(k => (
+              <div key={k.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+                <span className="text-sm font-medium text-gray-700">{k.label}</span>
+                <Toggle on={prefs[k.id]} onClick={() => onChange(k.id, !prefs[k.id])} />
+              </div>
+            ))}
+          </div>
         </div>
         <div className="p-5 border-t border-gray-100">
           <button
             onClick={() => {
-              const defaults = Object.fromEntries(WIDGETS.map(w => [w.id, w.defaultOn]))
-              Object.entries(defaults).forEach(([id, val]) => onChange(id, val))
+              [...WIDGETS, ...KPI_CARDS].forEach(w => onChange(w.id, w.defaultOn))
             }}
             className="w-full text-center text-xs text-gray-400 hover:text-gray-700"
           >
@@ -620,70 +654,15 @@ export default function Dashboard() {
       {/* ── KPI Cards ── */}
       {prefs.kpis && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            label="Total KG Sold"
-            value={`${totalKgAllTime.toFixed(1)}kg`}
-            sub="historical + CRM"
-            icon={Package}
-            trend={kgTrend}
-          />
-          <KpiCard
-            label="Total Revenue"
-            value={formatCurrency(totalRevenueExShipping)}
-            sub="paid invoices · excl. shipping"
-            icon={TrendingUp}
-            color="#0F6E56"
-          />
-          <KpiCard
-            label="Partners Ordering"
-            value={orderingPartners}
-            sub={`of ${partners.length} on the list`}
-            icon={Users}
-            color="#534AB7"
-          />
-          <KpiCard
-            label="Outstanding"
-            value={formatCurrency(outstanding)}
-            sub="unpaid + overdue"
-            icon={AlertCircle}
-            color="#dc2626"
-          />
-          <KpiCard
-            label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`}
-            value={formatCurrency(revMTD)}
-            sub="paid · excl. shipping · this month"
-            icon={DollarSign}
-            trend={revMTDTrend}
-            color="#0F6E56"
-          />
-          <KpiCard
-            label={`Revenue YTD — ${new Date().getFullYear()}`}
-            value={formatCurrency(revYTD)}
-            sub="paid · excl. shipping · this year"
-            icon={DollarSign}
-            color="#0F6E56"
-          />
-          <KpiCard
-            label="All Time Revenue"
-            value={formatCurrency(totalRevenueExShipping)}
-            sub="historical + paid CRM · excl. shipping"
-            icon={DollarSign}
-            color="#0F6E56"
-          />
-          <KpiCard
-            label="Retail Pouches Sold"
-            value={totalPouchesSold}
-            sub="50g pouches · CRM orders"
-            icon={ShoppingBag}
-            color="#7C5C2E"
-          />
-          <KpiCard
-            label="Starter Kits Sold"
-            value={totalStarterKitsSold}
-            sub="kits · CRM orders"
-            icon={Package}
-            color="#B45309"
-          />
+          {prefs.kpi_kg && <KpiCard label="Total KG Sold" value={`${totalKgAllTime.toFixed(1)}kg`} sub="historical + CRM" icon={Package} trend={kgTrend} />}
+          {prefs.kpi_revenue && <KpiCard label="Total Revenue" value={formatCurrency(totalRevenueExShipping)} sub="paid invoices · excl. shipping" icon={TrendingUp} color="#0F6E56" />}
+          {prefs.kpi_partners && <KpiCard label="Partners Ordering" value={orderingPartners} sub={`of ${partners.length} on the list`} icon={Users} color="#534AB7" />}
+          {prefs.kpi_outstanding && <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue" icon={AlertCircle} color="#dc2626" />}
+          {prefs.kpi_mtd && <KpiCard label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`} value={formatCurrency(revMTD)} sub="paid · excl. shipping · this month" icon={DollarSign} trend={revMTDTrend} color="#0F6E56" />}
+          {prefs.kpi_ytd && <KpiCard label={`Revenue YTD — ${new Date().getFullYear()}`} value={formatCurrency(revYTD)} sub="paid · excl. shipping · this year" icon={DollarSign} color="#0F6E56" />}
+          {prefs.kpi_alltime && <KpiCard label="All Time Revenue" value={formatCurrency(totalRevenueExShipping)} sub="historical + paid CRM · excl. shipping" icon={DollarSign} color="#0F6E56" />}
+          {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
+          {prefs.kpi_kits && <KpiCard label="Starter Kits Sold" value={totalStarterKitsSold} sub="kits · CRM orders" icon={Package} color="#B45309" />}
         </div>
       )}
 
