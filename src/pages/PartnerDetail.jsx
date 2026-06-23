@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, getOrderStatus, lineItemKg } from '../lib/utils'
 import PartnerModal from '../components/PartnerModal'
-import { ArrowLeft, Pencil, FileText } from 'lucide-react'
+import { ArrowLeft, Pencil, FileText, UserPlus, Send, ShoppingBag, TrendingUp } from 'lucide-react'
 
 const STATUS_COLORS = {
   prospect: 'bg-blue-100 text-blue-700',
@@ -118,6 +118,39 @@ export default function PartnerDetail() {
           <p className="text-xs text-gray-400 mt-1">{crmOrders} invoice{crmOrders !== 1 ? 's' : ''} in CRM</p>
         </div>
       </div>
+
+      {/* Timeline */}
+      {(() => {
+        const firstOrder = orders.length > 0 ? [...orders].sort((a,b) => a.date.localeCompare(b.date))[0] : null
+        const milestones = [
+          { icon: UserPlus, label: 'Added to CRM', date: partner.created_at ? formatDate(partner.created_at.slice(0,10)) : null, color: 'bg-blue-100 text-blue-600' },
+          { icon: Send, label: 'Sample Sent', date: partner.sample_sent_at ? formatDate(partner.sample_sent_at) : null, color: 'bg-purple-100 text-purple-600' },
+          { icon: ShoppingBag, label: 'First Order', date: firstOrder ? formatDate(firstOrder.date) : null, sub: firstOrder?.invoice_number, color: 'bg-amber-100 text-amber-600' },
+          { icon: TrendingUp, label: 'Last Order', date: partner.last_order_date ? formatDate(partner.last_order_date) : null, color: 'bg-green-100 text-[#3D6034]' },
+        ]
+        return (
+          <div className="card p-5">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">Partner Journey</h2>
+            <div className="flex items-start gap-0">
+              {milestones.map(({ icon: Icon, label, date, sub, color }, i) => (
+                <div key={label} className="flex-1 flex items-start gap-0">
+                  <div className="flex flex-col items-center flex-1">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${date ? color : 'bg-gray-100 text-gray-300'}`}>
+                      <Icon size={16} />
+                    </div>
+                    <p className="text-xs font-medium text-gray-700 mt-2 text-center">{label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 text-center">{date || '—'}</p>
+                    {sub && <p className="text-xs text-[#3D6034] mt-0.5 text-center">{sub}</p>}
+                  </div>
+                  {i < milestones.length - 1 && (
+                    <div className={`h-px w-full mt-4 ${date && milestones[i+1]?.date ? 'bg-gray-300' : 'bg-gray-100'}`} style={{marginLeft:'-1px',marginRight:'-1px'}} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Info */}
