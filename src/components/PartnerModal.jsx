@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calcNextOrder } from '../lib/utils'
+import { syncToSheets } from '../lib/sheetsSync'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -76,6 +77,7 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
       toast.error(error.message)
     } else {
       toast.success(partner?.id ? 'Partner updated' : 'Partner added')
+      syncToSheets()
       onSaved()
     }
     setSaving(false)

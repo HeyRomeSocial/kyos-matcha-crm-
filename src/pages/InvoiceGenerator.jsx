@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, calcNextOrder, lineItemKg } from '../lib/utils'
 import { Plus, Trash2, Save, Search, X, Mail } from 'lucide-react'
 import { format } from 'date-fns'
@@ -266,6 +267,7 @@ kyosmatcha.com`
 
       setSavedPdfUrl(publicUrl)
       toast.success(`Invoice ${invoiceNumber} saved!`)
+      syncToSheets()
     } catch (err) {
       console.error(err)
       toast.error(err.message || 'Failed to save invoice')

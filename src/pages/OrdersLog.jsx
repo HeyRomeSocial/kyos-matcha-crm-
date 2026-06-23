@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
 import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -247,6 +248,7 @@ export default function OrdersLog() {
     }).eq('id', order.id)
     if (error) { toast.error(error.message); return }
     toast.success(newStatus === 'paid' ? 'Marked as paid' : 'Moved back to pending')
+    syncToSheets()
 
     // Auto-upload paid invoice PDF to Google Drive (if webhook configured)
     if (newStatus === 'paid' && order.invoice_pdf_url) {
