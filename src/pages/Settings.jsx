@@ -17,6 +17,7 @@ export default function Settings() {
     accountNumber: '86383529',
   })
   const [driveWebhook, setDriveWebhook] = useState('')
+  const [sheetsSyncUrl, setSheetsSyncUrl] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -26,6 +27,7 @@ export default function Settings() {
         setFromAddress({ name: data.from_name, line1: data.from_line1, line2: data.from_line2 })
         setBanking({ accountName: data.bank_name, sortCode: data.bank_sort, accountNumber: data.bank_account })
         setDriveWebhook(data.drive_webhook_url || '')
+        setSheetsSyncUrl(data.sheets_sync_url || '')
       }
     })
   }, [])
@@ -40,6 +42,7 @@ export default function Settings() {
       bank_sort: banking.sortCode,
       bank_account: banking.accountNumber,
       drive_webhook_url: driveWebhook.trim() || null,
+      sheets_sync_url: sheetsSyncUrl.trim() || null,
       updated_at: new Date().toISOString(),
     }).eq('id', 1)
     if (error) toast.error(error.message)
@@ -124,6 +127,25 @@ export default function Settings() {
           When set, every invoice marked as <strong>Paid</strong> is automatically saved to your Google Drive
           (Kyos Matcha — Paid Invoices, organised by month). Setup instructions are in the
           <code className="bg-gray-50 px-1 rounded mx-1">google-apps-script/drive-upload.gs</code> file.
+        </p>
+      </div>
+
+      {/* Google Sheets reporting */}
+      <div className="card p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-gray-700">Google Sheets — CRM Reporting Sync</h2>
+        <div>
+          <label className="label">Apps Script Webhook URL</label>
+          <input
+            className="input"
+            value={sheetsSyncUrl}
+            onChange={e => setSheetsSyncUrl(e.target.value)}
+            placeholder="https://script.google.com/macros/s/…/exec"
+          />
+        </div>
+        <p className="text-xs text-gray-400">
+          When set, your CRM automatically syncs all orders and partner data to your Google Sheet
+          every time an invoice is saved, a payment is updated, or a partner is edited.
+          Generates <strong>Weekly Log</strong>, <strong>Monthly Report</strong> and <strong>Pipeline</strong> tabs automatically.
         </p>
       </div>
 
