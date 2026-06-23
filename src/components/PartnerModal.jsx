@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calcNextOrder } from '../lib/utils'
+import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
 const STATUS_OPTIONS = ['prospect', 'sample_sent', 'active', 'inactive']
@@ -59,6 +60,12 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
       last_order_date: form.last_order_date || null,
       next_expected_order: form.next_expected_order || null,
     }
+    // Auto-stamp sample_sent_at the first time status is set to sample_sent
+    const wasSampleSent = partner?.status === 'sample_sent'
+    if (payload.status === 'sample_sent' && !wasSampleSent && !payload.sample_sent_at) {
+      payload.sample_sent_at = format(new Date(), 'yyyy-MM-dd')
+    }
+
     let error
     if (partner?.id) {
       ;({ error } = await supabase.from('partners').update(payload).eq('id', partner.id))
