@@ -376,6 +376,7 @@ export default function OrdersLog() {
                   { label: 'Partner',   key: 'partner' },
                   { label: 'Date',      key: 'date' },
                   { label: 'Total',     key: 'total' },
+                  { label: 'Paid On',   key: null },
                   { label: 'PDF',       key: null },
                   { label: 'Payment',   key: null },
                   { label: '',          key: null },
@@ -423,6 +424,9 @@ export default function OrdersLog() {
                     </td>
                     <td className="px-5 py-3 text-sm text-gray-500">{formatDate(order.date)}</td>
                     <td className="px-5 py-3 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
+                    <td className="px-5 py-3 text-xs text-gray-400">
+                      {order.paid_at ? formatDate(order.paid_at.slice(0,10)) : '—'}
+                    </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <button
