@@ -121,7 +121,7 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
             </div>
             <div className="col-span-2">
               <label className="label">Address</label>
-              <input className="input" value={form.address} onChange={e => set('address', e.target.value)} placeholder="123 High Street, London, EC1A 1BB" />
+              <textarea className="input resize-none" rows={4} value={form.address || ''} onChange={e => set('address', e.target.value)} placeholder={"123 High Street\nShoreditch\nLondon\nEC1A 1BB"} />
             </div>
             <div>
               <label className="label">Price per KG (£)</label>
