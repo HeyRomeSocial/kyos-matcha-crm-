@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
 import { format, addDays } from 'date-fns'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
 
@@ -348,12 +348,47 @@ export default function OrdersLog() {
     overdue: orders.filter(o => getOrderStatus(o) === 'overdue').length,
   }
 
+  // Recently paid — last 5 invoices with a paid_at timestamp, most recent first
+  const recentlyPaid = [...orders]
+    .filter(o => o.paid_at)
+    .sort((a, b) => b.paid_at.localeCompare(a.paid_at))
+    .slice(0, 5)
+
   return (
     <div className="space-y-6 max-w-7xl">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Orders</h1>
         <p className="text-sm text-gray-500 mt-0.5">{orders.length} invoices total</p>
       </div>
+
+      {/* Recently Paid */}
+      {recentlyPaid.length > 0 && (
+        <div className="card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 size={15} className="text-[#3D6034]" />
+            <h2 className="text-sm font-semibold text-gray-900">Recently Paid</h2>
+            <span className="text-xs text-gray-400 ml-1">last {recentlyPaid.length} payments</span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            {recentlyPaid.map(o => {
+              const paidDate = o.paid_at ? new Date(o.paid_at) : null
+              const isToday = paidDate && formatDate(paidDate.toISOString().slice(0,10)) === formatDate(new Date().toISOString().slice(0,10))
+              const timeStr = paidDate ? paidDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+              const dateStr = paidDate ? (isToday ? `Today ${timeStr}` : formatDate(o.paid_at.slice(0,10)) ) : ''
+              return (
+                <div key={o.id} className="flex items-center gap-2.5 bg-[#EEF3EC] rounded-xl px-3 py-2.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-[#3D6034] flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#3D6034] truncate">{o.invoice_number}</p>
+                    <p className="text-xs text-gray-600 truncate">{o.partner_name}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{dateStr} · {formatCurrency(o.total)}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
