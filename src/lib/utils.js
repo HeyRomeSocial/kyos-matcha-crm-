@@ -42,6 +42,8 @@ export function lineItemKg(li) {
 
 export function getOrderStatus(order) {
   if (order.status === 'paid') return 'paid'
+  // If snoozed until a future date, treat as pending regardless of age
+  if (order.snoozed_until && order.snoozed_until >= format(new Date(), 'yyyy-MM-dd')) return 'unpaid'
   const days = differenceInDays(new Date(), parseISO(order.date))
   if (days > 14) return 'overdue'
   return 'unpaid'

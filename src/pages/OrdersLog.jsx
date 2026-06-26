@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
+import { format, addDays } from 'date-fns'
 import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
@@ -249,6 +250,14 @@ export default function OrdersLog() {
     return () => supabase.removeChannel(channel)
   }, [load])
 
+  async function snoozeTopending(order) {
+    const snoozedUntil = format(addDays(new Date(), 30), 'yyyy-MM-dd')
+    const { error } = await supabase.from('orders').update({ snoozed_until: snoozedUntil }).eq('id', order.id)
+    if (error) { toast.error(error.message); return }
+    toast.success('Moved to Pending — will re-flag as overdue in 30 days')
+    syncToSheets()
+  }
+
   async function togglePaid(order) {
     const newStatus = order.status === 'paid' ? 'unpaid' : 'paid'
     const { error } = await supabase.from('orders').update({
@@ -460,7 +469,18 @@ export default function OrdersLog() {
                       </div>
                     </td>
                     <td className="px-5 py-3">
-                      <PaidToggle order={order} onToggle={togglePaid} />
+                      <div className="flex items-center gap-2">
+                        <PaidToggle order={order} onToggle={togglePaid} />
+                        {status === 'overdue' && (
+                          <button
+                            onClick={() => snoozeTopending(order)}
+                            className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg hover:bg-amber-100 transition-colors whitespace-nowrap"
+                            title="Move back to Pending for 30 days"
+                          >
+                            → Pending
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1">
