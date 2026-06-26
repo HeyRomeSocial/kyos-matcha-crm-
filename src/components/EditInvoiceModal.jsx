@@ -4,6 +4,7 @@ import { formatCurrency } from '../lib/utils'
 import { X, Plus, Trash2, Save, Mail } from 'lucide-react'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { syncToSheets } from '../lib/sheetsSync'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -164,6 +165,7 @@ export default function EditInvoiceModal({ order, onClose, onSaved }) {
 
       setSavedPdfUrl(freshUrl)
       toast.success(`${order.invoice_number} updated!`)
+      syncToSheets()
       onSaved()
     } catch (err) {
       toast.error(err.message || 'Failed to update invoice')
