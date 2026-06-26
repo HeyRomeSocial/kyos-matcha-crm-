@@ -331,6 +331,7 @@ export default function OrdersLog() {
             bv = `${b.date || ''}-${String(nb).padStart(6, '0')}`
             break
           }
+          case 'paid_at': av = a.paid_at || ''; bv = b.paid_at || ''; break
           case 'total':   av = a.total || 0; bv = b.total || 0; break
           case 'status':  av = getOrderStatus(a); bv = getOrderStatus(b); break
           default:        av = a.date || ''; bv = b.date || ''
@@ -429,7 +430,7 @@ export default function OrdersLog() {
                   { label: 'Partner',   key: 'partner' },
                   { label: 'Date',      key: 'date' },
                   { label: 'Total',     key: 'total' },
-                  { label: 'Paid On',   key: null },
+                  { label: 'Paid On',   key: 'paid_at' },
                   { label: 'PDF',       key: null },
                   { label: 'Payment',   key: null },
                   { label: '',          key: null },
