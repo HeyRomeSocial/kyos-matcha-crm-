@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
 
-function PdfViewerModal({ order, onClose }) {
+function PdfViewerModal({ order, onClose, onNewInvoice }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
       <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl" style={{ height: '92vh' }}>
@@ -16,6 +17,13 @@ function PdfViewerModal({ order, onClose }) {
             <p className="text-xs text-gray-400 mt-0.5">{order.invoice_pdf_url ? 'PDF Invoice' : 'No PDF available'}</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onNewInvoice}
+              className="btn-secondary text-xs"
+              title={`New invoice for ${order.partner_name}`}
+            >
+              <FilePlus size={13} /> New Invoice
+            </button>
             {order.invoice_pdf_url && (
               <a
                 href={order.invoice_pdf_url}
@@ -198,6 +206,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
 }
 
 export default function OrdersLog() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState([])
   const [partners, setPartners] = useState([])
   const [loading, setLoading] = useState(true)
@@ -454,13 +463,22 @@ export default function OrdersLog() {
                       <PaidToggle order={order} onToggle={togglePaid} />
                     </td>
                     <td className="px-5 py-3">
-                      <button
-                        onClick={() => setEditOrder(order)}
-                        className="p-1.5 rounded-lg text-gray-300 hover:text-[#3D6034] hover:bg-[#EEF3EC] transition-colors"
-                        title="Edit invoice"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => navigate('/invoice', { state: { partnerId: order.partner_id } })}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-[#3D6034] hover:bg-[#EEF3EC] transition-colors"
+                          title={`New invoice for ${order.partner_name}`}
+                        >
+                          <FilePlus size={14} />
+                        </button>
+                        <button
+                          onClick={() => setEditOrder(order)}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-[#3D6034] hover:bg-[#EEF3EC] transition-colors"
+                          title="Edit invoice"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-5 py-3">
                       <button
@@ -489,7 +507,11 @@ export default function OrdersLog() {
       </div>
 
       {viewOrder && (
-        <PdfViewerModal order={viewOrder} onClose={() => setViewOrder(null)} />
+        <PdfViewerModal
+          order={viewOrder}
+          onClose={() => setViewOrder(null)}
+          onNewInvoice={() => { setViewOrder(null); navigate('/invoice', { state: { partnerId: viewOrder.partner_id } }) }}
+        />
       )}
 
       {editOrder && (
