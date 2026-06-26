@@ -48,9 +48,9 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
         <div>
           <div style={{ fontSize: '9px', fontWeight: 600, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px' }}>BILL TO</div>
           <div style={{ fontWeight: 600 }}>{billTo?.name || '—'}</div>
-          {billTo?.address && <div style={{ color: '#6b7280', marginTop: '2px', whiteSpace: 'pre-line' }}>{billTo.address}</div>}
           {billTo?.contact && <div style={{ color: '#6b7280', marginTop: '2px' }}>{billTo.contact}</div>}
-          {billTo?.email && <div style={{ color: '#6b7280' }}>{billTo.email}</div>}
+          {billTo?.address && <div style={{ color: '#6b7280', marginTop: '2px', whiteSpace: 'pre-line' }}>{billTo.address}</div>}
+          {billTo?.email && <div style={{ color: '#6b7280', marginTop: '2px' }}>{billTo.email}</div>}
         </div>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
