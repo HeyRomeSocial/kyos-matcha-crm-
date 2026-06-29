@@ -126,7 +126,7 @@ export default function Partners() {
 
   const filtered = useMemo(() => {
     const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 30)
+    cutoff.setDate(cutoff.getDate() - 21)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
 
     const list = partners.filter(p => {
