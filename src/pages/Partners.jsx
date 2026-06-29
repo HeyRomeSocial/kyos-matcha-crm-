@@ -142,14 +142,18 @@ export default function Partners() {
       return matchStatus && matchSearch
     })
     return [...list].sort((a, b) => {
-      // Inactive tab: sort by last order date ascending (longest gap first), never-ordered at very top
+      // Inactive tab: active partners with no order in 21 days first, then truly inactive, both sorted oldest last order first
       if (filter === 'inactive') {
+        const aNoOrder = a.status === 'active'
+        const bNoOrder = b.status === 'active'
+        if (aNoOrder && !bNoOrder) return -1
+        if (!aNoOrder && bNoOrder) return 1
         const al = a.combined_last_order || a.last_order_date || ''
         const bl = b.combined_last_order || b.last_order_date || ''
         if (!al && !bl) return a.name?.localeCompare(b.name)
         if (!al) return -1
         if (!bl) return 1
-        return al.localeCompare(bl) // oldest date first
+        return al.localeCompare(bl)
       }
       let av, bv
       switch (sortKey) {
