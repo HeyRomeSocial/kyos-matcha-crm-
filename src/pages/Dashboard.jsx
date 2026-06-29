@@ -195,7 +195,8 @@ function loadPrefs() {
     const saved = localStorage.getItem('km_dashboard_widgets')
     if (saved) {
       const parsed = JSON.parse(saved)
-      // backfill any new KPI keys missing from older saved prefs
+      // backfill any new widget or KPI keys missing from older saved prefs
+      WIDGETS.forEach(w => { if (!(w.id in parsed)) parsed[w.id] = w.defaultOn })
       KPI_CARDS.forEach(k => { if (!(k.id in parsed)) parsed[k.id] = k.defaultOn })
       return parsed
     }
