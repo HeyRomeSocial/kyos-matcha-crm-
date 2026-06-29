@@ -12,7 +12,8 @@ import {
 } from 'chart.js'
 import { Bar, Line } from 'react-chartjs-2'
 import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO, getDaysInMonth } from 'date-fns'
-import { Download, Calendar, DollarSign } from 'lucide-react'
+import { Download, Calendar, DollarSign, Edit2, Check } from 'lucide-react'
+import { restockInventory, adjustInventory } from '../lib/inventory'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
 
@@ -41,6 +42,7 @@ const WIDGETS = [
   { id: 'reorders',   label: 'Upcoming Reorders',           defaultOn: true },
   { id: 'invoices',   label: 'Recent Invoices',             defaultOn: true },
   { id: 'no_order',   label: 'Active — No Order This Month', defaultOn: true },
+  { id: 'inventory',  label: 'Matcha Inventory',            defaultOn: true },
   { id: 'mission',    label: 'Mission Progress',            defaultOn: false },
 ]
 
@@ -251,6 +253,145 @@ function StatusBadge({ status }) {
   return <span className="badge-unpaid">Unpaid</span>
 }
 
+function InventoryWidget({ inventory, onUpdate }) {
+  const [restocking, setRestocking] = useState(null) // { item, qty, notes }
+  const [editing, setEditing]       = useState(null) // { item, qty }
+  const [saving, setSaving]         = useState(false)
+
+  async function handleRestock() {
+    if (!restocking || !restocking.qty) return
+    setSaving(true)
+    await restockInventory(restocking.item.id, restocking.qty, restocking.notes)
+    await onUpdate()
+    setRestocking(null)
+    setSaving(false)
+    toast.success(`${restocking.item.name} restocked +${restocking.qty}kg`)
+  }
+
+  async function handleAdjust() {
+    if (!editing || editing.qty === '') return
+    setSaving(true)
+    await adjustInventory(editing.item.id, editing.qty)
+    await onUpdate()
+    setEditing(null)
+    setSaving(false)
+    toast.success(`${editing.item.name} updated`)
+  }
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">🍵 Matcha Inventory</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Auto-deducted when invoices are created</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {inventory.map(item => {
+          const stock  = Number(item.stock_kg)
+          const thresh = Number(item.low_stock_threshold_kg)
+          const pct    = thresh > 0 ? Math.min((stock / (thresh * 4)) * 100, 100) : 100
+          const isLow  = stock <= thresh && stock > 0
+          const isOut  = stock === 0
+
+          return (
+            <div key={item.id} className={`rounded-xl border p-4 ${isOut ? 'border-red-200 bg-red-50' : isLow ? 'border-amber-200 bg-amber-50' : 'border-[#d1e7cc] bg-[#EEF3EC]'}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold text-gray-900">{item.name}</span>
+                <button
+                  onClick={() => setEditing({ item, qty: stock })}
+                  className="p-1 rounded text-gray-400 hover:text-gray-700"
+                  title="Edit stock"
+                >
+                  <Edit2 size={13} />
+                </button>
+              </div>
+
+              {editing?.item.id === item.id ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="input text-sm w-24 py-1"
+                    value={editing.qty}
+                    onChange={e => setEditing(ed => ({ ...ed, qty: e.target.value }))}
+                    autoFocus
+                  />
+                  <span className="text-xs text-gray-500">kg</span>
+                  <button onClick={handleAdjust} disabled={saving} className="p-1.5 rounded-lg bg-[#3D6034] text-white">
+                    <Check size={12} />
+                  </button>
+                  <button onClick={() => setEditing(null)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500">
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <p className={`text-3xl font-bold mt-1 ${isOut ? 'text-red-600' : isLow ? 'text-amber-700' : 'text-[#1a3a12]'}`}>
+                  {stock.toFixed(1)}<span className="text-base font-normal ml-1">kg</span>
+                </p>
+              )}
+
+              <div className="mt-3 h-2 bg-white/60 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${isOut ? 'bg-red-400' : isLow ? 'bg-amber-400' : 'bg-[#3D6034]'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className={`text-xs mt-1.5 ${isOut ? 'text-red-500 font-semibold' : isLow ? 'text-amber-600 font-semibold' : 'text-[#3D6034]'}`}>
+                {isOut ? '✖ Out of stock' : isLow ? `⚠ Low — threshold ${thresh}kg` : `● In stock · threshold ${thresh}kg`}
+              </p>
+
+              <button
+                onClick={() => setRestocking({ item, qty: '', notes: '' })}
+                className="mt-3 w-full text-xs font-medium py-1.5 rounded-lg bg-white/80 hover:bg-white text-[#3D6034] border border-[#b3d0ab] transition-colors"
+              >
+                + Restock
+              </button>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Restock modal */}
+      {restocking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-base font-semibold">Restock — {restocking.item.name}</h3>
+            <p className="text-xs text-gray-500">Current stock: <strong>{Number(restocking.item.stock_kg).toFixed(1)}kg</strong></p>
+            <div>
+              <label className="label">Add KG</label>
+              <input
+                type="number" step="0.1" min="0"
+                className="input"
+                placeholder="e.g. 20"
+                value={restocking.qty}
+                onChange={e => setRestocking(r => ({ ...r, qty: e.target.value }))}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="label">Notes (optional)</label>
+              <input
+                className="input"
+                placeholder="e.g. New batch from supplier"
+                value={restocking.notes}
+                onChange={e => setRestocking(r => ({ ...r, notes: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setRestocking(null)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={handleRestock} disabled={saving || !restocking.qty} className="btn-primary flex-1">
+                {saving ? 'Saving…' : `+ ${restocking.qty || '0'}kg`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NoOrderModal({ partners, onClose, navigate }) {
   const now = new Date()
   const rows = partners.map(p => {
@@ -398,6 +539,7 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([])
   const [tasks, setTasks] = useState([])
   const [currentGoal, setCurrentGoal] = useState(null)
+  const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
   const [hoverOrder, setHoverOrder] = useState(null)
   const [showNoOrderModal, setShowNoOrderModal] = useState(false)
@@ -413,16 +555,18 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       const currentMonthStr = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-      const [{ data: p }, { data: o }, { data: t }, { data: g }] = await Promise.all([
+      const [{ data: p }, { data: o }, { data: t }, { data: g }, { data: inv }] = await Promise.all([
         supabase.from('partners').select('*'),
         supabase.from('orders').select('*').order('date', { ascending: false }),
         supabase.from('tasks').select('*').neq('status', 'done').order('due_date', { ascending: true }).limit(5),
         supabase.from('goals').select('*').eq('month', currentMonthStr).maybeSingle(),
+        supabase.from('inventory').select('*').order('name'),
       ])
       setPartners(p || [])
       setOrders(o || [])
       setTasks(t || [])
       setCurrentGoal(g || null)
+      setInventory(inv || [])
       setLoading(false)
     }
     load()
@@ -982,6 +1126,17 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* ── Matcha Inventory ── */}
+      {prefs.inventory && (
+        <InventoryWidget
+          inventory={inventory}
+          onUpdate={async () => {
+            const { data } = await supabase.from('inventory').select('*').order('name')
+            setInventory(data || [])
+          }}
+        />
       )}
 
       {/* ── Mission Progress ── */}
