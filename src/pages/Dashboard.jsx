@@ -251,6 +251,83 @@ function StatusBadge({ status }) {
   return <span className="badge-unpaid">Unpaid</span>
 }
 
+function NoOrderModal({ partners, onClose, navigate }) {
+  const now = new Date()
+  const rows = partners.map(p => {
+    const days = p.last_order_date
+      ? Math.floor((now - new Date(p.last_order_date)) / 86400000)
+      : null
+    return { ...p, daysSince: days }
+  }).sort((a, b) => (b.daysSince ?? 9999) - (a.daysSince ?? 9999))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col" style={{ maxHeight: '90vh' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Active Partners — No Order This Month</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{rows.length} partners · sorted by longest gap since last order</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          <table className="w-full">
+            <thead className="sticky top-0 bg-white z-10">
+              <tr className="border-b border-gray-100">
+                {['Partner','Contact','Email','Last Order','Days Since',''].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(p => (
+                <tr
+                  key={p.id}
+                  className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 cursor-pointer"
+                  onClick={() => { onClose(); navigate(`/partners/${p.id}`) }}
+                >
+                  <td className="px-5 py-3">
+                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                    {p.phone && <p className="text-xs text-gray-400 mt-0.5">{p.phone}</p>}
+                  </td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{p.contact_name || '—'}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">
+                    {p.email
+                      ? <a href={`mailto:${p.email}`} onClick={e => e.stopPropagation()} className="text-[#3D6034] hover:underline">{p.email}</a>
+                      : '—'}
+                  </td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{p.last_order_date ? formatDate(p.last_order_date) : 'Never'}</td>
+                  <td className="px-5 py-3">
+                    {p.daysSince != null ? (
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        p.daysSince > 60 ? 'bg-red-100 text-red-600' :
+                        p.daysSince > 30 ? 'bg-amber-100 text-amber-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {p.daysSince}d ago
+                      </span>
+                    ) : <span className="text-xs text-gray-400">—</span>}
+                  </td>
+                  <td className="px-5 py-3">
+                    <button
+                      onClick={e => { e.stopPropagation(); onClose(); navigate('/invoice', { state: { partnerId: p.id } }) }}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-[#EEF3EC] text-[#3D6034] hover:bg-[#d8e8d4] font-medium whitespace-nowrap"
+                    >
+                      + Invoice
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Customise Panel ──────────────────────────────────────────────────────────
 function Toggle({ on, onClick }) {
   return (
@@ -323,6 +400,7 @@ export default function Dashboard() {
   const [currentGoal, setCurrentGoal] = useState(null)
   const [loading, setLoading] = useState(true)
   const [hoverOrder, setHoverOrder] = useState(null)
+  const [showNoOrderModal, setShowNoOrderModal] = useState(false)
 
   function toggleWidget(id, val) {
     setPrefs(p => {
@@ -876,12 +954,15 @@ export default function Dashboard() {
       {prefs.no_order && noOrderThisMonth.length > 0 && (
         <div className="card overflow-hidden">
           <div className="p-5 border-b border-gray-100">
-            <SectionHeader
-              title={`⚠ Active Partners — No Order in ${format(new Date(), 'MMMM yyyy')}`}
-              sub={`${noOrderThisMonth.length} partner${noOrderThisMonth.length !== 1 ? 's' : ''} haven't ordered this month`}
-              linkTo="/partners"
-              navigate={navigate}
-            />
+            <div className="flex items-center justify-between mb-0">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">{`⚠ Active Partners — No Order in ${format(new Date(), 'MMMM yyyy')}`}</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{`${noOrderThisMonth.length} partner${noOrderThisMonth.length !== 1 ? 's' : ''} haven't ordered this month`}</p>
+              </div>
+              <button onClick={() => setShowNoOrderModal(true)} className="flex items-center gap-1 text-xs text-[#3D6034] hover:underline">
+                View all <ChevronRight size={12} />
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-gray-50">
             {noOrderThisMonth.map((p, i) => (
@@ -1004,6 +1085,15 @@ export default function Dashboard() {
           prefs={prefs}
           onChange={toggleWidget}
           onClose={() => setCustomising(false)}
+        />
+      )}
+
+      {/* ── No Order Modal ── */}
+      {showNoOrderModal && (
+        <NoOrderModal
+          partners={noOrderThisMonth}
+          onClose={() => setShowNoOrderModal(false)}
+          navigate={navigate}
         />
       )}
     </div>
