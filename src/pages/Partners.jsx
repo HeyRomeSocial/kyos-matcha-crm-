@@ -6,14 +6,13 @@ import PartnerModal from '../components/PartnerModal'
 import { Plus, Search, Pencil, ExternalLink, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const STATUSES = ['all', 'prospect', 'sample_sent', 'active', 'inactive', 'no_order']
+const STATUSES = ['all', 'prospect', 'sample_sent', 'active', 'inactive']
 
 const STATUS_LABELS = {
   prospect: 'Prospect',
   sample_sent: 'Sample Sent',
   active: 'Active',
   inactive: 'Inactive',
-  no_order: 'No Order This Month',
 }
 
 const STATUS_COLORS = {
@@ -126,24 +125,21 @@ export default function Partners() {
   }
 
   const filtered = useMemo(() => {
-    const thisMonthStart = new Date()
-    thisMonthStart.setDate(1)
-    const cutoff = thisMonthStart.toISOString().slice(0, 10)
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - 30)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
 
     const list = partners.filter(p => {
-      if (filter === 'no_order') {
-        if (p.status !== 'active') return false
-        const lastOrder = p.combined_last_order || p.last_order_date || null
-        return !lastOrder || lastOrder < cutoff
-      }
-      const matchStatus = filter === 'all' || p.status === filter
+      const lastOrder = p.combined_last_order || p.last_order_date || null
+      const noOrderIn30 = p.status === 'active' && (!lastOrder || lastOrder < cutoffStr)
+
+      const matchStatus = filter === 'all'
+        || p.status === filter
+        || (filter === 'inactive' && noOrderIn30)
+
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.contact_name?.toLowerCase().includes(search.toLowerCase())
       return matchStatus && matchSearch
-    }).filter(p => {
-      if (filter === 'no_order') return true
-      return !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.contact_name?.toLowerCase().includes(search.toLowerCase())
     })
     return [...list].sort((a, b) => {
       let av, bv
@@ -203,8 +199,7 @@ export default function Partners() {
               onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 filter === s
-                  ? s === 'no_order' ? 'bg-amber-500 text-white' : 'bg-[#3D6034] text-white'
-                  : s === 'no_order' ? 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100'
+                  ? 'bg-[#3D6034] text-white'
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
