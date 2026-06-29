@@ -142,6 +142,15 @@ export default function Partners() {
       return matchStatus && matchSearch
     })
     return [...list].sort((a, b) => {
+      // Inactive tab: sort by last order date ascending (longest gap first), never-ordered at very top
+      if (filter === 'inactive') {
+        const al = a.combined_last_order || a.last_order_date || ''
+        const bl = b.combined_last_order || b.last_order_date || ''
+        if (!al && !bl) return a.name?.localeCompare(b.name)
+        if (!al) return -1
+        if (!bl) return 1
+        return al.localeCompare(bl) // oldest date first
+      }
       let av, bv
       switch (sortKey) {
         case 'name':         av = a.name?.toLowerCase(); bv = b.name?.toLowerCase(); break
