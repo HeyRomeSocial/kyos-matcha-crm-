@@ -25,8 +25,9 @@ const KPI_CARDS = [
   { id: 'kpi_mtd',       label: 'Revenue MTD',           defaultOn: true },
   { id: 'kpi_ytd',       label: 'Revenue YTD',           defaultOn: true },
   { id: 'kpi_alltime',   label: 'All Time Revenue',      defaultOn: true },
-  { id: 'kpi_pouches',   label: 'Retail Pouches Sold',   defaultOn: true },
-  { id: 'kpi_kits',      label: 'Starter Kits Sold',     defaultOn: true },
+  { id: 'kpi_pouches',      label: 'Retail Pouches Sold',        defaultOn: true },
+  { id: 'kpi_kits',         label: 'Starter Kits Sold',          defaultOn: true },
+  { id: 'kpi_no_order',     label: 'Active — No Order This Month', defaultOn: true },
 ]
 
 const WIDGETS = [
@@ -37,9 +38,10 @@ const WIDGETS = [
   { id: 'goals',      label: 'Monthly Goals',        defaultOn: true },
   { id: 'tasks',      label: 'Open Tasks',           defaultOn: true },
   { id: 'partners',   label: 'Top 5 Partners',       defaultOn: true },
-  { id: 'reorders',   label: 'Upcoming Reorders',    defaultOn: true },
-  { id: 'invoices',   label: 'Recent Invoices',      defaultOn: true },
-  { id: 'mission',    label: 'Mission Progress',     defaultOn: false },
+  { id: 'reorders',   label: 'Upcoming Reorders',           defaultOn: true },
+  { id: 'invoices',   label: 'Recent Invoices',             defaultOn: true },
+  { id: 'no_order',   label: 'Active — No Order This Month', defaultOn: true },
+  { id: 'mission',    label: 'Mission Progress',            defaultOn: false },
 ]
 
 // Conversion gauge — SVG semicircle
@@ -490,6 +492,14 @@ export default function Dashboard() {
     .sort((a, b) => a.next_expected_order.localeCompare(b.next_expected_order))
     .slice(0, 8)
 
+  // Active partners with no order this month
+  const orderedThisMonth = new Set(
+    orders.filter(o => o.date >= thisMonthStart && o.date <= thisMonthEnd).map(o => o.partner_id)
+  )
+  const noOrderThisMonth = partners
+    .filter(p => p.status === 'active' && !orderedThisMonth.has(p.id))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+
   // Top 5 partners — calculated live from orders
   const partnerRevMap = orders.reduce((acc, o) => {
     if (!o.partner_id) return acc
@@ -651,6 +661,7 @@ export default function Dashboard() {
           {prefs.kpi_alltime && <KpiCard label="All Time Revenue" value={formatCurrency(totalRevenueAllTime)} sub="historical + all paid CRM invoices" icon={DollarSign} color="#0F6E56" />}
           {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
           {prefs.kpi_kits && <KpiCard label="Starter Kits Sold" value={totalStarterKitsSold} sub="kits · CRM orders" icon={Package} color="#B45309" />}
+          {prefs.kpi_no_order && <KpiCard label={`No Order — ${format(new Date(), 'MMM yyyy')}`} value={noOrderThisMonth.length} sub={`of ${activePartners} active partners`} icon={AlertCircle} color="#f59e0b" />}
         </div>
       )}
 
@@ -858,6 +869,37 @@ export default function Dashboard() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Active Partners — No Order This Month ── */}
+      {prefs.no_order && noOrderThisMonth.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
+            <SectionHeader
+              title={`⚠ Active Partners — No Order in ${format(new Date(), 'MMMM yyyy')}`}
+              sub={`${noOrderThisMonth.length} partner${noOrderThisMonth.length !== 1 ? 's' : ''} haven't ordered this month`}
+              linkTo="/partners"
+              navigate={navigate}
+            />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-gray-50">
+            {noOrderThisMonth.map((p, i) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between px-4 py-3 hover:bg-amber-50/50 cursor-pointer transition-colors"
+                onClick={() => navigate(`/partners/${p.id}`)}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {p.last_order_date ? `Last order ${formatDate(p.last_order_date)}` : 'No orders yet'}
+                  </p>
+                </div>
+                <ChevronRight size={14} className="text-gray-300 flex-shrink-0 ml-2" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
