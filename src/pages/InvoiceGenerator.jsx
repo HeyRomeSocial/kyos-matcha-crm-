@@ -105,6 +105,8 @@ export default function InvoiceGenerator() {
 
   const [partners, setPartners] = useState([])
   const [selectedPartner, setSelectedPartner] = useState(null)
+  const [locations, setLocations] = useState([])
+  const [selectedLocation, setSelectedLocation] = useState(null)
   const [invoiceNumber, setInvoiceNumber] = useState('KM-167')
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [lineItems, setLineItems] = useState([newItem('Premium Matcha', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
@@ -143,9 +145,9 @@ export default function InvoiceGenerator() {
     load()
   }, [])
 
-  function selectPartner(partner) {
+  async function selectPartner(partner) {
     setSelectedPartner(partner)
-    // Pre-fill Bill To from partner data
+    setSelectedLocation(null)
     setBillTo({
       name: partner.name || '',
       address: partner.address || '',
@@ -156,6 +158,24 @@ export default function InvoiceGenerator() {
     items.push(newItem('Premium Matcha', 1, partner.price_per_kg || 0))
     items.push(newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 0))
     setLineItems(items)
+
+    // Fetch branches/locations for this partner
+    const { data: locs } = await supabase
+      .from('partner_locations')
+      .select('*')
+      .eq('partner_id', partner.id)
+      .order('label')
+    setLocations(locs || [])
+  }
+
+  function selectLocation(loc) {
+    setSelectedLocation(loc)
+    setBillTo({
+      name: loc.label || selectedPartner?.name || '',
+      address: loc.address || '',
+      contact: loc.contact_name || selectedPartner?.contact_name || '',
+      email: loc.email || selectedPartner?.email || '',
+    })
   }
 
   function updateItem(id, field, value) {
@@ -298,6 +318,34 @@ kyosmatcha.com`
               }}
             />
           </div>
+
+          {/* Branch picker */}
+          {locations.length > 0 && (
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Branch / Location</p>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={() => {
+                    setSelectedLocation(null)
+                    setBillTo({ name: selectedPartner?.name || '', address: selectedPartner?.address || '', contact: selectedPartner?.contact_name || '', email: selectedPartner?.email || '' })
+                  }}
+                  className={`text-left px-3 py-2 rounded-lg text-xs border transition-colors ${!selectedLocation ? 'border-[#3D6034] bg-[#EEF3EC] text-[#3D6034] font-semibold' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Main (default)
+                </button>
+                {locations.map(loc => (
+                  <button
+                    key={loc.id}
+                    onClick={() => selectLocation(loc)}
+                    className={`text-left px-3 py-2 rounded-lg text-xs border transition-colors ${selectedLocation?.id === loc.id ? 'border-[#3D6034] bg-[#EEF3EC] text-[#3D6034] font-semibold' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <span className="font-medium">{loc.label}</span>
+                    {loc.address && <span className="block text-gray-400 truncate mt-0.5">{loc.address.split('\n')[0]}</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Bill To — editable */}
           <div className="border-t border-gray-100 pt-4 space-y-2">

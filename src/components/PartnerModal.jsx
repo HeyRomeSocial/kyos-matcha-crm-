@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { calcNextOrder } from '../lib/utils'
 import { syncToSheets } from '../lib/sheetsSync'
@@ -25,12 +25,21 @@ function empty() {
 
 export default function PartnerModal({ partner, onClose, onSaved }) {
   const [form, setForm] = useState(partner ? { ...partner } : empty())
+
+  useEffect(() => {
+    if (partner?.id) {
+      supabase.from('partner_locations').select('*').eq('partner_id', partner.id).order('label')
+        .then(({ data }) => setLocations(data || []))
+    }
+  }, [partner?.id])
   const [freqMode, setFreqMode] = useState(() => {
     if (!partner?.reorder_frequency_days) return 14
     const found = FREQ_OPTIONS.find(f => f.value === partner.reorder_frequency_days)
     return found ? partner.reorder_frequency_days : 'custom'
   })
   const [saving, setSaving] = useState(false)
+  const [locations, setLocations] = useState([])
+  const [newLoc, setNewLoc] = useState(null) // { label, contact_name, email, address }
 
   function set(key, val) {
     setForm(f => {
@@ -159,6 +168,67 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
               <label className="label">Notes</label>
               <textarea className="input resize-none" rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} />
             </div>
+
+            {/* Branches / Locations */}
+            {partner?.id && (
+              <div className="col-span-2 border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Branches / Locations</p>
+                  <button
+                    type="button"
+                    onClick={() => setNewLoc({ label: '', contact_name: '', email: '', address: '' })}
+                    className="flex items-center gap-1 text-xs text-[#3D6034] font-medium hover:underline"
+                  >
+                    <Plus size={12} /> Add branch
+                  </button>
+                </div>
+
+                {locations.map(loc => (
+                  <div key={loc.id} className="mb-3 p-3 rounded-lg border border-gray-100 bg-gray-50 text-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-800">{loc.label}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await supabase.from('partner_locations').delete().eq('id', loc.id)
+                          setLocations(l => l.filter(x => x.id !== loc.id))
+                        }}
+                        className="text-gray-300 hover:text-red-400"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    {loc.address && <p className="text-gray-500 whitespace-pre-line">{loc.address}</p>}
+                    {loc.email && <p className="text-gray-400">{loc.email}</p>}
+                  </div>
+                ))}
+
+                {newLoc && (
+                  <div className="p-3 rounded-lg border border-[#3D6034] bg-[#EEF3EC] space-y-2">
+                    <input className="input text-xs" placeholder="Branch name (e.g. Deep North Tynemouth)" value={newLoc.label} onChange={e => setNewLoc(l => ({ ...l, label: e.target.value }))} />
+                    <input className="input text-xs" placeholder="Contact name (optional)" value={newLoc.contact_name} onChange={e => setNewLoc(l => ({ ...l, contact_name: e.target.value }))} />
+                    <input className="input text-xs" placeholder="Email (optional)" value={newLoc.email} onChange={e => setNewLoc(l => ({ ...l, email: e.target.value }))} />
+                    <textarea className="input text-xs resize-none" rows={3} placeholder={"34 Front Street\nNorth Shields\nNE30 4DZ"} value={newLoc.address} onChange={e => setNewLoc(l => ({ ...l, address: e.target.value }))} />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setNewLoc(null)} className="btn-secondary text-xs py-1 flex-1">Cancel</button>
+                      <button
+                        type="button"
+                        disabled={!newLoc.label}
+                        onClick={async () => {
+                          const { data } = await supabase.from('partner_locations').insert({ ...newLoc, partner_id: partner.id }).select().single()
+                          if (data) setLocations(l => [...l, data])
+                          setNewLoc(null)
+                          toast.success('Branch added')
+                        }}
+                        className="btn-primary text-xs py-1 flex-1"
+                      >
+                        Save Branch
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
