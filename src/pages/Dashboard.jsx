@@ -42,14 +42,6 @@ const WIDGETS = [
   { id: 'mission',    label: 'Mission Progress',     defaultOn: false },
 ]
 
-// Revenue from an order excluding shipping line items
-function orderRevenueExShipping(o) {
-  return (o.line_items || []).reduce((s, li) => {
-    if (li.desc?.toLowerCase().includes('shipping')) return s
-    return s + (Number(li.qty) || 0) * (Number(li.price) || 0)
-  }, 0)
-}
-
 // Conversion gauge — SVG semicircle
 function ConversionGauge({ ordering, total, sampleSent, prospects }) {
   const pct = total > 0 ? (ordering / total) * 100 : 0
@@ -383,10 +375,6 @@ export default function Dashboard() {
   const totalRevenueAllTime = historicalRevenue + crmRevenue
   const totalOrdersAllTime = historicalOrders + crmOrders
 
-  // Revenue excluding shipping: historical (kg × price, no shipping) + CRM line items minus shipping
-  const crmRevenueExShipping = orders.filter(o => o.status === 'paid').reduce((s, o) => s + orderRevenueExShipping(o), 0)
-  const totalRevenueExShipping = historicalRevenue + crmRevenueExShipping
-
   // Retail pouches sold (50g units) across all CRM orders
   const totalPouchesSold = orders.reduce((s, o) =>
     s + (o.line_items || []).reduce((a, li) => {
@@ -444,20 +432,20 @@ export default function Dashboard() {
   const lastMonthRev = orders.filter(o => o.date >= lastMonthStart && o.date <= lastMonthEnd).reduce((s, o) => s + (o.total || 0), 0)
   const revTrend = lastMonthRev > 0 ? ((thisMonthRev - lastMonthRev) / lastMonthRev) * 100 : null
 
-  // Revenue MTD (paid only, excl. shipping)
+  // Revenue MTD (paid only, incl. shipping)
   const revMTD = orders
     .filter(o => o.status === 'paid' && o.date >= thisMonthStart && o.date <= thisMonthEnd)
-    .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+    .reduce((s, o) => s + (Number(o.total) || 0), 0)
   const revMTDLastMonth = orders
     .filter(o => o.status === 'paid' && o.date >= lastMonthStart && o.date <= lastMonthEnd)
-    .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+    .reduce((s, o) => s + (Number(o.total) || 0), 0)
   const revMTDTrend = revMTDLastMonth > 0 ? ((revMTD - revMTDLastMonth) / revMTDLastMonth) * 100 : null
 
-  // Revenue YTD (paid only, excl. shipping)
+  // Revenue YTD (paid only, incl. shipping)
   const yearStart = `${new Date().getFullYear()}-01-01`
   const revYTD = orders
     .filter(o => o.status === 'paid' && o.date >= yearStart)
-    .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+    .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
   // Chart — 12 months
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -521,7 +509,7 @@ export default function Dashboard() {
   const milestones = [
     { label: '100 Active Partners', current: activePartners, target: 100 },
     { label: '1,000 KG Supplied', current: totalKgAllTime, target: 1000, unit: 'kg' },
-    { label: '£100k Revenue', current: totalRevenueAllTime, target: 100000, unit: '£' },
+    { label: '£100k Revenue', current: totalRevenueAllTime, target: 100000, unit: '£' },  // includes shipping
   ]
 
   // Goals actuals
@@ -538,7 +526,7 @@ export default function Dashboard() {
     const dayStr = `${dailyMonthPrefix}-${String(i + 1).padStart(2, '0')}`
     return orders
       .filter(o => o.date === dayStr)
-      .reduce((s, o) => s + orderRevenueExShipping(o), 0)
+      .reduce((s, o) => s + (Number(o.total) || 0), 0)
   })
   const dailyChartData = {
     labels: Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -655,12 +643,12 @@ export default function Dashboard() {
       {prefs.kpis && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {prefs.kpi_kg && <KpiCard label="Total KG Sold" value={`${totalKgAllTime.toFixed(1)}kg`} sub="historical + CRM" icon={Package} trend={kgTrend} />}
-          {prefs.kpi_revenue && <KpiCard label="Total Revenue" value={formatCurrency(totalRevenueExShipping)} sub="paid invoices · excl. shipping" icon={TrendingUp} color="#0F6E56" />}
+          {prefs.kpi_revenue && <KpiCard label="Total Revenue" value={formatCurrency(totalRevenueAllTime)} sub="historical + all paid CRM invoices" icon={TrendingUp} color="#0F6E56" />}
           {prefs.kpi_partners && <KpiCard label="Partners Ordering" value={orderingPartners} sub={`of ${partners.length} on the list`} icon={Users} color="#534AB7" />}
-          {prefs.kpi_outstanding && <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue" icon={AlertCircle} color="#dc2626" />}
-          {prefs.kpi_mtd && <KpiCard label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`} value={formatCurrency(revMTD)} sub="paid · excl. shipping · this month" icon={DollarSign} trend={revMTDTrend} color="#0F6E56" />}
-          {prefs.kpi_ytd && <KpiCard label={`Revenue YTD — ${new Date().getFullYear()}`} value={formatCurrency(revYTD)} sub="paid · excl. shipping · this year" icon={DollarSign} color="#0F6E56" />}
-          {prefs.kpi_alltime && <KpiCard label="All Time Revenue" value={formatCurrency(totalRevenueExShipping)} sub="historical + paid CRM · excl. shipping" icon={DollarSign} color="#0F6E56" />}
+          {prefs.kpi_outstanding && <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue invoices" icon={AlertCircle} color="#dc2626" />}
+          {prefs.kpi_mtd && <KpiCard label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`} value={formatCurrency(revMTD)} sub="paid invoices · this month" icon={DollarSign} trend={revMTDTrend} color="#0F6E56" />}
+          {prefs.kpi_ytd && <KpiCard label={`Revenue YTD — ${new Date().getFullYear()}`} value={formatCurrency(revYTD)} sub="paid invoices · this year" icon={DollarSign} color="#0F6E56" />}
+          {prefs.kpi_alltime && <KpiCard label="All Time Revenue" value={formatCurrency(totalRevenueAllTime)} sub="historical + all paid CRM invoices" icon={DollarSign} color="#0F6E56" />}
           {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
           {prefs.kpi_kits && <KpiCard label="Starter Kits Sold" value={totalStarterKitsSold} sub="kits · CRM orders" icon={Package} color="#B45309" />}
         </div>
@@ -674,7 +662,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-sm font-semibold text-gray-900">Daily Revenue</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">CRM invoices · shipping excluded</p>
+                  <p className="text-xs text-gray-400 mt-0.5">CRM invoices · all revenue</p>
                 </div>
                 <select
                   className="input text-xs py-1.5 w-36"
