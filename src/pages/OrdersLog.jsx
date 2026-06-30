@@ -5,7 +5,7 @@ import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
 import { restoreInventoryForOrder } from '../lib/inventory'
 import { format, addDays } from 'date-fns'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2 } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
 
@@ -63,7 +63,7 @@ function PdfViewerModal({ order, onClose, onNewInvoice }) {
   )
 }
 
-function PartnerHoverCard({ partner, orders }) {
+function PartnerHoverCard({ partner, orders, onNavigate }) {
   if (!partner) return null
   const partnerOrders = orders.filter(o => o.partner_id === partner.id)
   const totalOrders = (Number(partner.total_orders) || 0) + partnerOrders.length
@@ -78,7 +78,7 @@ function PartnerHoverCard({ partner, orders }) {
   const lastOrder = [partner.last_order_date, ...partnerOrders.map(o => o.date)].filter(Boolean).sort().pop()
 
   return (
-    <div className="absolute z-50 left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-xl p-3 pointer-events-none">
+    <div className="absolute z-50 left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-xl p-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-gray-900 truncate">{partner.name}</p>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${partner.status === 'active' ? 'bg-[#EEF3EC] text-[#3D6034]' : 'bg-gray-100 text-gray-500'}`}>
@@ -111,6 +111,12 @@ function PartnerHoverCard({ partner, orders }) {
           </div>
         )}
       </div>
+      <button
+        onClick={() => onNavigate(`/partners/${partner.id}`)}
+        className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs text-[#3D6034] font-medium bg-[#EEF3EC] hover:bg-[#dce8d8] py-1.5 rounded-lg transition-colors"
+      >
+        <ExternalLink size={11} /> View Partner
+      </button>
     </div>
   )
 }
@@ -474,11 +480,12 @@ export default function OrdersLog() {
                     className={`border-b border-gray-50 last:border-0 ${isOverdue ? 'bg-red-50/40' : 'hover:bg-gray-50/50'}`}
                   >
                     <td className="px-5 py-3 text-sm font-medium text-[#3D6034]">{order.invoice_number}</td>
-                    <td className="px-5 py-3 text-sm text-gray-700 relative">
+                    <td className="px-5 py-3 text-sm text-gray-700 relative"
+                      onMouseLeave={() => setHoveredPartner(null)}
+                    >
                       <span
                         className="cursor-default hover:text-[#3D6034] hover:underline decoration-dotted transition-colors"
                         onMouseEnter={() => setHoveredPartner(order.partner_id)}
-                        onMouseLeave={() => setHoveredPartner(null)}
                       >
                         {order.partner_name}
                       </span>
@@ -486,6 +493,7 @@ export default function OrdersLog() {
                         <PartnerHoverCard
                           partner={partners.find(p => p.id === order.partner_id)}
                           orders={orders}
+                          onNavigate={navigate}
                         />
                       )}
                     </td>
