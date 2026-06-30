@@ -188,15 +188,27 @@ function NotesModal({ order, onClose, onSaved }) {
   )
 }
 
-function ConfirmDialog({ message, onConfirm, onCancel }) {
+function ConfirmDialog({ message, onConfirm, onCancel, showRestoreStock = false }) {
+  const [restoreStock, setRestoreStock] = React.useState(true)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-        <p className="text-sm text-gray-700 mb-6">{message}</p>
+        <p className="text-sm text-gray-700 mb-4">{message}</p>
+        {showRestoreStock && (
+          <label className="flex items-center gap-2.5 mb-6 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={restoreStock}
+              onChange={e => setRestoreStock(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#3D6034]"
+            />
+            <span className="text-sm text-gray-600">Return kg back to inventory</span>
+          </label>
+        )}
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="btn-secondary">Cancel</button>
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(restoreStock)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
           >
             Delete
@@ -293,8 +305,8 @@ export default function OrdersLog() {
     }
   }
 
-  async function deleteOrder(order) {
-    await restoreInventoryForOrder(order)
+  async function deleteOrder(order, restoreStock = false) {
+    if (restoreStock) await restoreInventoryForOrder(order)
     if (order.invoice_pdf_url) {
       const filename = `${order.invoice_number}.pdf`
       await supabase.storage.from('invoices').remove([filename])
@@ -593,8 +605,9 @@ export default function OrdersLog() {
       {confirmDelete && (
         <ConfirmDialog
           message={`Are you sure you want to delete ${confirmDelete.invoice_number}? This cannot be undone.`}
-          onConfirm={() => deleteOrder(confirmDelete)}
+          onConfirm={(restoreStock) => deleteOrder(confirmDelete, restoreStock)}
           onCancel={() => setConfirmDelete(null)}
+          showRestoreStock
         />
       )}
     </div>
