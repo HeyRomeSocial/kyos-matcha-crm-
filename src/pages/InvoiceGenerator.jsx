@@ -109,7 +109,7 @@ export default function InvoiceGenerator() {
   const [selectedLocation, setSelectedLocation] = useState(null)
   const [invoiceNumber, setInvoiceNumber] = useState('KM-167')
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [lineItems, setLineItems] = useState([newItem('Premium Matcha', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
+  const [lineItems, setLineItems] = useState([newItem('Premium Matcha A', 1, 0), newItem('Premium Matcha AAA', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
   const [saving, setSaving] = useState(false)
   const [savedPdfUrl, setSavedPdfUrl] = useState(null)
   const [billTo, setBillTo] = useState({ name: '', address: '', contact: '', email: '' })
@@ -155,7 +155,8 @@ export default function InvoiceGenerator() {
       email: partner.email || '',
     })
     const items = []
-    items.push(newItem('Premium Matcha', 1, partner.price_per_kg || 0))
+    items.push(newItem('Premium Matcha AAA', 1, partner.price_per_kg || 0))
+    items.push(newItem('Premium Matcha A', 1, partner.price_per_kg || 0))
     items.push(newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 0))
     setLineItems(items)
 
@@ -179,8 +180,9 @@ export default function InvoiceGenerator() {
   }
 
   function updateItem(id, field, value) {
+    const resolved = field === 'desc' && value === '__other__' ? '' : value
     setLineItems(items => items.map(item =>
-      item.id === id ? { ...item, [field]: field === 'qty' || field === 'price' ? Number(value) : value } : item
+      item.id === id ? { ...item, [field]: field === 'qty' || field === 'price' ? Number(resolved) : resolved } : item
     ))
   }
 
@@ -194,7 +196,7 @@ export default function InvoiceGenerator() {
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'))
     setSelectedPartner(null)
     setBillTo({ name: '', address: '', contact: '', email: '' })
-    setLineItems([newItem('Premium Matcha', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
+    setLineItems([newItem('Premium Matcha A', 1, 0), newItem('Premium Matcha AAA', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
     setSavedPdfUrl(null)
   }
 
@@ -386,12 +388,28 @@ kyosmatcha.com`
           <div className="space-y-2">
             {lineItems.map(item => (
               <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                <input
-                  className="input col-span-5 text-xs"
-                  placeholder="Description"
-                  value={item.desc}
-                  onChange={e => updateItem(item.id, 'desc', e.target.value)}
-                />
+                {['Premium Matcha A', 'Premium Matcha AAA', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit'].includes(item.desc) || item.desc === '' ? (
+                  <select
+                    className="input col-span-5 text-xs"
+                    value={item.desc}
+                    onChange={e => updateItem(item.id, 'desc', e.target.value)}
+                  >
+                    <option value="">Select item…</option>
+                    <option value="Premium Matcha A">Premium Matcha A</option>
+                    <option value="Premium Matcha AAA">Premium Matcha AAA</option>
+                    <option value="Royal Mail Shipping Fee">Royal Mail Shipping Fee</option>
+                    <option value="Retail Pouch 50g">Retail Pouch 50g</option>
+                    <option value="Starter Kit">Starter Kit</option>
+                    <option value="__other__">Other…</option>
+                  </select>
+                ) : (
+                  <input
+                    className="input col-span-5 text-xs"
+                    placeholder="Description"
+                    value={item.desc}
+                    onChange={e => updateItem(item.id, 'desc', e.target.value)}
+                  />
+                )}
                 <input
                   type="number"
                   className="input col-span-2 text-xs text-center"
