@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
+import { restoreInventoryForOrder } from '../lib/inventory'
 import { format, addDays } from 'date-fns'
 import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -293,7 +294,7 @@ export default function OrdersLog() {
   }
 
   async function deleteOrder(order) {
-    // Also delete PDF from storage if it exists
+    await restoreInventoryForOrder(order)
     if (order.invoice_pdf_url) {
       const filename = `${order.invoice_number}.pdf`
       await supabase.storage.from('invoices').remove([filename])

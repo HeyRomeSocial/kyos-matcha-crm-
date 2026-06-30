@@ -59,6 +59,44 @@ export async function deductInventoryForOrder(order) {
   }
 }
 
+// Restore inventory when an order is deleted (reverse of deductInventoryForOrder)
+export async function restoreInventoryForOrder(order) {
+  if (!order?.line_items?.length) return
+
+  const { data: items } = await supabase.from('inventory').select('*')
+  if (!items?.length) return
+
+  for (const li of order.line_items) {
+    const desc = (li.desc || '').toLowerCase()
+    if (!desc.includes('matcha')) continue
+    if (desc.includes('50g') || desc.includes('pouch')) continue
+    if (desc.includes('starter kit')) continue
+    if (desc.includes('shipping')) continue
+
+    const sku = matchSku(li.desc)
+    if (!sku) continue
+
+    const item = items.find(i => i.sku === sku)
+    if (!item) continue
+
+    const qty = Number(li.qty) || 0
+    if (qty <= 0) continue
+
+    await supabase.from('inventory').update({
+      stock_kg: Number(item.stock_kg) + qty,
+      updated_at: new Date().toISOString(),
+    }).eq('id', item.id)
+
+    await supabase.from('inventory_transactions').insert({
+      inventory_id: item.id,
+      order_id: order.id || null,
+      type: 'restock',
+      qty_change: qty,
+      notes: `Deleted invoice ${order.invoice_number || ''}`,
+    })
+  }
+}
+
 // Restock an inventory item
 export async function restockInventory(inventoryId, qty, notes = '') {
   const { data: item } = await supabase.from('inventory').select('*').eq('id', inventoryId).single()
