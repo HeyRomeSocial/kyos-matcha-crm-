@@ -109,7 +109,7 @@ export default function InvoiceGenerator() {
   const [selectedLocation, setSelectedLocation] = useState(null)
   const [invoiceNumber, setInvoiceNumber] = useState('KM-167')
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [lineItems, setLineItems] = useState([newItem('Premium Matcha A', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
+  const [lineItems, setLineItems] = useState([newItem('Premium Matcha A', 1, 0), newItem('Royal Mail Shipping Fee', 1, 7)])
   const [saving, setSaving] = useState(false)
   const [savedPdfUrl, setSavedPdfUrl] = useState(null)
   const [billTo, setBillTo] = useState({ name: '', address: '', contact: '', email: '' })
@@ -160,7 +160,7 @@ export default function InvoiceGenerator() {
       : sku === 'AAA'
       ? [newItem('Premium Matcha AAA', 1, partner.price_per_kg || 0)]
       : [newItem('Premium Matcha A', 1, partner.price_per_kg || 0)]
-    setLineItems([...matchaItems, newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 0)])
+    setLineItems([...matchaItems, newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 7)])
 
     // Fetch branches/locations for this partner
     const { data: locs } = await supabase
@@ -198,7 +198,7 @@ export default function InvoiceGenerator() {
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'))
     setSelectedPartner(null)
     setBillTo({ name: '', address: '', contact: '', email: '' })
-    setLineItems([newItem('Premium Matcha A', 1, 0), newItem('Royal Mail Shipping Fee', 1, 0)])
+    setLineItems([newItem('Premium Matcha A', 1, 0), newItem('Royal Mail Shipping Fee', 1, 7)])
     setSavedPdfUrl(null)
   }
 
