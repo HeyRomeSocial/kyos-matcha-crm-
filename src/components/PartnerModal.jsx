@@ -13,6 +13,11 @@ const FREQ_OPTIONS = [
   { label: 'Monthly (30 days)', value: 30 },
   { label: 'Custom', value: 'custom' },
 ]
+const SKU_OPTIONS = [
+  { value: 'A', label: 'Matcha A' },
+  { value: 'AAA', label: 'Matcha AAA' },
+  { value: 'both', label: 'Both' },
+]
 
 function empty() {
   return {
@@ -20,6 +25,7 @@ function empty() {
     status: 'prospect', price_per_kg: '', shipping_fee: '',
     projected_kg_month: '', reorder_frequency_days: 14,
     last_order_date: '', next_expected_order: '', notes: '',
+    preferred_sku: 'A',
   }
 }
 
@@ -127,6 +133,25 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
                   <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
                 ))}
               </select>
+            </div>
+            <div className="col-span-2">
+              <label className="label">Matcha Product</label>
+              <div className="flex gap-2">
+                {SKU_OPTIONS.map(o => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => set('preferred_sku', o.value)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                      (form.preferred_sku || 'A') === o.value
+                        ? 'bg-[#3D6034] text-white border-[#3D6034]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="col-span-2">
               <label className="label">Address</label>

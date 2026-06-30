@@ -154,10 +154,13 @@ export default function InvoiceGenerator() {
       contact: partner.contact_name || '',
       email: partner.email || '',
     })
-    setLineItems([
-      newItem('Premium Matcha A', 1, partner.price_per_kg || 0),
-      newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 0),
-    ])
+    const sku = partner.preferred_sku || 'A'
+    const matchaItems = sku === 'both'
+      ? [newItem('Premium Matcha A', 1, partner.price_per_kg || 0), newItem('Premium Matcha AAA', 1, partner.price_per_kg || 0)]
+      : sku === 'AAA'
+      ? [newItem('Premium Matcha AAA', 1, partner.price_per_kg || 0)]
+      : [newItem('Premium Matcha A', 1, partner.price_per_kg || 0)]
+    setLineItems([...matchaItems, newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 0)])
 
     // Fetch branches/locations for this partner
     const { data: locs } = await supabase
