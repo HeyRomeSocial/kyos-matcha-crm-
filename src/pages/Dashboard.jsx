@@ -12,7 +12,7 @@ import {
 } from 'chart.js'
 import { Bar, Line } from 'react-chartjs-2'
 import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO, getDaysInMonth } from 'date-fns'
-import { Download, Calendar, DollarSign, Edit2, Check } from 'lucide-react'
+import { Download, Calendar, DollarSign, Edit2, Check, History } from 'lucide-react'
 import { restockInventory, adjustInventory } from '../lib/inventory'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
@@ -255,9 +255,20 @@ function StatusBadge({ status }) {
 }
 
 function InventoryWidget({ inventory, onUpdate }) {
-  const [restocking, setRestocking] = useState(null) // { item, qty, notes }
-  const [editing, setEditing]       = useState(null) // { item, qty }
+  const [restocking, setRestocking] = useState(null)
+  const [editing, setEditing]       = useState(null)
   const [saving, setSaving]         = useState(false)
+  const [history, setHistory]       = useState(null) // { item, logs }
+
+  async function openHistory(item) {
+    const { data } = await supabase
+      .from('inventory_transactions')
+      .select('*')
+      .eq('inventory_id', item.id)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    setHistory({ item, logs: data || [] })
+  }
 
   async function handleRestock() {
     if (!restocking || !restocking.qty) return
@@ -300,13 +311,22 @@ function InventoryWidget({ inventory, onUpdate }) {
             <div key={item.id} className={`rounded-xl border p-4 ${isOut ? 'border-red-200 bg-red-50' : isLow ? 'border-amber-200 bg-amber-50' : 'border-[#d1e7cc] bg-[#EEF3EC]'}`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-semibold text-gray-900">{item.name}</span>
-                <button
-                  onClick={() => setEditing({ item, qty: stock })}
-                  className="p-1 rounded text-gray-400 hover:text-gray-700"
-                  title="Edit stock"
-                >
-                  <Edit2 size={13} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openHistory(item)}
+                    className="p-1 rounded text-gray-400 hover:text-gray-700"
+                    title="View history"
+                  >
+                    <History size={13} />
+                  </button>
+                  <button
+                    onClick={() => setEditing({ item, qty: stock })}
+                    className="p-1 rounded text-gray-400 hover:text-gray-700"
+                    title="Edit stock"
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                </div>
               </div>
 
               {editing?.item.id === item.id ? (
@@ -385,6 +405,40 @@ function InventoryWidget({ inventory, onUpdate }) {
               <button onClick={handleRestock} disabled={saving || !restocking.qty} className="btn-primary flex-1">
                 {saving ? 'Saving…' : `+ ${restocking.qty || '0'}kg`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History modal */}
+      {history && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold">{history.item.name} — History</h3>
+              <button onClick={() => setHistory(null)} className="p-1 rounded text-gray-400 hover:text-gray-700"><X size={16} /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 space-y-2">
+              {history.logs.length === 0 && <p className="text-xs text-gray-400 text-center py-6">No history yet</p>}
+              {history.logs.map(log => {
+                const isPositive = log.qty_change > 0
+                const typeLabel = log.type === 'sale' ? 'Sale' : log.type === 'restock' ? 'Restock' : 'Adjustment'
+                const typeColor = log.type === 'sale' ? 'text-red-500' : 'text-[#3D6034]'
+                return (
+                  <div key={log.id} className="flex items-start justify-between py-2 border-b border-gray-50 last:border-0">
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">{typeLabel}</p>
+                      {log.notes && <p className="text-xs text-gray-400">{log.notes}</p>}
+                      <p className="text-[10px] text-gray-300 mt-0.5">
+                        {format(new Date(log.created_at), 'dd MMM yyyy · HH:mm')}
+                      </p>
+                    </div>
+                    <span className={`text-sm font-semibold ${typeColor}`}>
+                      {isPositive ? '+' : ''}{log.qty_change}kg
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
