@@ -67,8 +67,9 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
   async function handleSave() {
     if (!form.name.trim()) { toast.error('Partner name is required'); return }
     setSaving(true)
+    const { combined_kg, combined_orders, combined_spent, combined_last_order, ...formData } = form
     const payload = {
-      ...form,
+      ...formData,
       price_per_kg: form.price_per_kg ? Number(form.price_per_kg) : null,
       shipping_fee: form.shipping_fee ? Number(form.shipping_fee) : null,
       projected_kg_month: form.projected_kg_month ? Number(form.projected_kg_month) : null,
