@@ -250,7 +250,8 @@ kyosmatcha.com`
 
       // Upload PDF to Supabase Storage
       const partnerSlug = (selectedPartner?.name || billTo.name || '').replace(/[^a-zA-Z0-9 ]/g, '').trim()
-      const filename = `${partnerSlug ? partnerSlug + ' ' : ''}${invoiceNumber}.pdf`
+      const dateSlug = format(new Date(invoiceDate), 'dd-MM-yyyy')
+      const filename = `${partnerSlug ? partnerSlug + ' ' : ''}${dateSlug} ${invoiceNumber}.pdf`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('invoices')
         .upload(filename, pdfBlob, { contentType: 'application/pdf', upsert: true })
