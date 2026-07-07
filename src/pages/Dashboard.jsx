@@ -751,69 +751,56 @@ export default function Dashboard() {
   const monthlyKg = months.map(m =>
     sumKg(orders.filter(o => o.date >= m.start && o.date <= m.end))
   )
+  const kgLabelPlugin = {
+    id: 'kgLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, data, scales: { x, y } } = chart
+      data.datasets[0].data.forEach((val, i) => {
+        const kg = monthlyKg[i]
+        if (!kg) return
+        const xPos = x.getPixelForValue(i)
+        const yPos = y.getPixelForValue(val)
+        ctx.save()
+        ctx.fillStyle = '#6b7280'
+        ctx.font = '11px Inter, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(`${kg.toFixed(1)} kg`, xPos, yPos - 8)
+        ctx.restore()
+      })
+    }
+  }
+
   const chartData = {
     labels: months.map(m => m.label),
-    datasets: [
-      {
-        type: 'bar',
-        label: 'Revenue (£)',
-        data: monthlyRevenue,
-        backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
-        borderRadius: 6,
-        borderSkipped: false,
-        hoverBackgroundColor: '#2E4A27',
-        maxBarThickness: 56,
-        yAxisID: 'y',
-      },
-      {
-        type: 'line',
-        label: 'KG Sold',
-        data: monthlyKg,
-        borderColor: '#B45309',
-        backgroundColor: 'rgba(180,83,9,0.1)',
-        borderWidth: 2,
-        pointBackgroundColor: '#B45309',
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        tension: 0.3,
-        fill: false,
-        yAxisID: 'y1',
-      },
-    ],
+    datasets: [{
+      type: 'bar',
+      label: 'Revenue (£)',
+      data: monthlyRevenue,
+      backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
+      borderRadius: 6,
+      borderSkipped: false,
+      hoverBackgroundColor: '#2E4A27',
+      maxBarThickness: 56,
+    }],
   }
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        align: 'end',
-        labels: { boxWidth: 12, font: { size: 11 }, color: '#6b7280', padding: 16 },
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: '#1a1a1a',
         padding: 10,
         cornerRadius: 8,
         callbacks: {
-          label: ctx => ctx.dataset.label === 'KG Sold'
-            ? `  ${Number(ctx.raw).toFixed(1)} kg`
-            : `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+          label: ctx => `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}  ·  ${monthlyKg[ctx.dataIndex]?.toFixed(1)} kg`,
         },
       },
     },
     scales: {
       y: {
-        position: 'left',
         ticks: { callback: v => `£${Number(v).toLocaleString('en-GB')}`, color: '#9ca3af', font: { size: 11 } },
         grid: { color: '#f3f4f6' },
-        border: { display: false },
-      },
-      y1: {
-        position: 'right',
-        ticks: { callback: v => `${v}kg`, color: '#B45309', font: { size: 11 } },
-        grid: { display: false },
         border: { display: false },
       },
       x: {
@@ -1053,7 +1040,7 @@ export default function Dashboard() {
             <div className="card p-5 lg:col-span-2">
               <SectionHeader title="Monthly Revenue" sub="Last 12 months — invoices created in CRM" navigate={navigate} />
               <div className="h-52">
-                <Bar data={chartData} options={chartOptions} />
+                <Bar data={chartData} options={chartOptions} plugins={[kgLabelPlugin]} />
               </div>
             </div>
           )}
