@@ -164,6 +164,7 @@ export default function Partners() {
         case 'last_order':   av = a.combined_last_order || ''; bv = b.combined_last_order || ''; break
         case 'next_order':   av = a.next_expected_order || ''; bv = b.next_expected_order || ''; break
         case 'price_per_kg': av = a.price_per_kg || 0;   bv = b.price_per_kg || 0;  break
+        case 'created_at':   av = a.created_at || ''; bv = b.created_at || ''; break
         default:             av = a.name?.toLowerCase(); bv = b.name?.toLowerCase()
       }
       if (av < bv) return sortDir === 'asc' ? -1 : 1
@@ -238,6 +239,7 @@ export default function Partners() {
                   { label: 'Total Spent',  key: 'total_spent' },
                   { label: 'Last Order',   key: 'last_order' },
                   { label: 'Next Order',   key: 'next_order' },
+                  { label: 'Added',        key: 'created_at' },
                   { label: '',             key: null },
                 ].map(({ label, key }) => (
                   <th
@@ -282,6 +284,7 @@ export default function Partners() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.combined_last_order)}</td>
                   <td className="px-4 py-3"><NextOrderCell partner={p} /></td>
+                  <td className="px-4 py-3 text-sm text-gray-400">{p.created_at ? formatDate(p.created_at.slice(0,10)) : '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button

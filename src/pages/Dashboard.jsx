@@ -24,6 +24,7 @@ const KPI_CARDS = [
   { id: 'kpi_partners',  label: 'Partners Ordering',     defaultOn: true },
   { id: 'kpi_outstanding', label: 'Outstanding',         defaultOn: true },
   { id: 'kpi_mtd',       label: 'Revenue MTD',           defaultOn: true },
+  { id: 'kpi_kg_mtd',   label: 'KG MTD',                defaultOn: true },
   { id: 'kpi_ytd',       label: 'Revenue YTD',           defaultOn: true },
   { id: 'kpi_alltime',   label: 'All Time Revenue',      defaultOn: true },
   { id: 'kpi_pouches',      label: 'Retail Pouches Sold',        defaultOn: true },
@@ -720,15 +721,24 @@ export default function Dashboard() {
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
   const revMTDTrend = revMTDLastMonth > 0 ? ((revMTD - revMTDLastMonth) / revMTDLastMonth) * 100 : null
 
+  // KG this month
+  const sumKg = (list) => list.reduce((s, o) => s + (o.line_items || []).reduce((t, li) => t + lineItemKg(li), 0), 0)
+  const kgMTD = sumKg(orders.filter(o => o.date >= thisMonthStart && o.date <= thisMonthEnd))
+  const kgPrevMonth = sumKg(orders.filter(o => o.date >= lastMonthStart && o.date <= lastMonthEnd))
+  const kgMTDTrend = kgPrevMonth > 0 ? ((kgMTD - kgPrevMonth) / kgPrevMonth) * 100 : null
+
   // Revenue YTD (paid only, incl. shipping)
   const yearStart = `${new Date().getFullYear()}-01-01`
   const revYTD = orders
     .filter(o => o.status === 'paid' && o.date >= yearStart)
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // Chart — 12 months
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = subMonths(new Date(), 11 - i)
+  // Chart — months from June 2026 to now
+  const CRM_START = new Date(2026, 5, 1) // June 2026
+  const now = new Date()
+  const totalMonths = (now.getFullYear() - CRM_START.getFullYear()) * 12 + (now.getMonth() - CRM_START.getMonth()) + 1
+  const months = Array.from({ length: totalMonths }, (_, i) => {
+    const d = new Date(CRM_START.getFullYear(), CRM_START.getMonth() + i, 1)
     return {
       label: format(d, 'MMM yy'),
       start: format(startOfMonth(d), 'yyyy-MM-dd'),
@@ -934,6 +944,7 @@ export default function Dashboard() {
           {prefs.kpi_partners && <KpiCard label="Partners Ordering" value={orderingPartners} sub={`of ${partners.length} on the list`} icon={Users} color="#534AB7" />}
           {prefs.kpi_outstanding && <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue invoices" icon={AlertCircle} color="#dc2626" />}
           {prefs.kpi_mtd && <KpiCard label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`} value={formatCurrency(revMTD)} sub="paid invoices · this month" icon={DollarSign} trend={revMTDTrend} color="#0F6E56" />}
+          {prefs.kpi_kg_mtd && <KpiCard label={`KG MTD — ${format(new Date(), 'MMM yyyy')}`} value={`${kgMTD.toFixed(1)}kg`} sub="matcha kg · this month" icon={Package} trend={kgMTDTrend} />}
           {prefs.kpi_ytd && <KpiCard label={`Revenue YTD — ${new Date().getFullYear()}`} value={formatCurrency(revYTD)} sub="paid invoices · this year" icon={DollarSign} color="#0F6E56" />}
           {prefs.kpi_alltime && <KpiCard label="All Time Revenue" value={formatCurrency(totalRevenueAllTime)} sub="historical + all paid CRM invoices" icon={DollarSign} color="#0F6E56" />}
           {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
