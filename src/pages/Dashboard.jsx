@@ -753,10 +753,11 @@ export default function Dashboard() {
     datasets: [{
       label: 'Revenue (£)',
       data: monthlyRevenue,
-      backgroundColor: '#3D6034',
-      borderRadius: 8,
+      backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
+      borderRadius: 6,
       borderSkipped: false,
       hoverBackgroundColor: '#2E4A27',
+      maxBarThickness: 56,
     }],
   }
   const chartOptions = {
@@ -764,11 +765,30 @@ export default function Dashboard() {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: ctx => `£${ctx.raw.toFixed(2)}` } }
+      tooltip: {
+        backgroundColor: '#1a1a1a',
+        padding: 10,
+        cornerRadius: 8,
+        callbacks: {
+          label: ctx => `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+        },
+      },
     },
     scales: {
-      y: { ticks: { callback: v => `£${v}` }, grid: { color: '#f3f4f6' }, border: { display: false } },
-      x: { grid: { display: false }, border: { display: false } },
+      y: {
+        ticks: {
+          callback: v => `£${Number(v).toLocaleString('en-GB')}`,
+          color: '#9ca3af',
+          font: { size: 11 },
+        },
+        grid: { color: '#f3f4f6' },
+        border: { display: false },
+      },
+      x: {
+        ticks: { color: '#6b7280', font: { size: 12 } },
+        grid: { display: false },
+        border: { display: false },
+      },
     },
   }
 
