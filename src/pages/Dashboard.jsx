@@ -748,40 +748,72 @@ export default function Dashboard() {
   const monthlyRevenue = months.map(m =>
     orders.filter(o => o.date >= m.start && o.date <= m.end).reduce((s, o) => s + (o.total || 0), 0)
   )
+  const monthlyKg = months.map(m =>
+    sumKg(orders.filter(o => o.date >= m.start && o.date <= m.end))
+  )
   const chartData = {
     labels: months.map(m => m.label),
-    datasets: [{
-      label: 'Revenue (£)',
-      data: monthlyRevenue,
-      backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
-      borderRadius: 6,
-      borderSkipped: false,
-      hoverBackgroundColor: '#2E4A27',
-      maxBarThickness: 56,
-    }],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Revenue (£)',
+        data: monthlyRevenue,
+        backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
+        borderRadius: 6,
+        borderSkipped: false,
+        hoverBackgroundColor: '#2E4A27',
+        maxBarThickness: 56,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line',
+        label: 'KG Sold',
+        data: monthlyKg,
+        borderColor: '#B45309',
+        backgroundColor: 'rgba(180,83,9,0.1)',
+        borderWidth: 2,
+        pointBackgroundColor: '#B45309',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.3,
+        fill: false,
+        yAxisID: 'y1',
+      },
+    ],
   }
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: true,
+        position: 'top',
+        align: 'end',
+        labels: { boxWidth: 12, font: { size: 11 }, color: '#6b7280', padding: 16 },
+      },
       tooltip: {
         backgroundColor: '#1a1a1a',
         padding: 10,
         cornerRadius: 8,
         callbacks: {
-          label: ctx => `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+          label: ctx => ctx.dataset.label === 'KG Sold'
+            ? `  ${Number(ctx.raw).toFixed(1)} kg`
+            : `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
         },
       },
     },
     scales: {
       y: {
-        ticks: {
-          callback: v => `£${Number(v).toLocaleString('en-GB')}`,
-          color: '#9ca3af',
-          font: { size: 11 },
-        },
+        position: 'left',
+        ticks: { callback: v => `£${Number(v).toLocaleString('en-GB')}`, color: '#9ca3af', font: { size: 11 } },
         grid: { color: '#f3f4f6' },
+        border: { display: false },
+      },
+      y1: {
+        position: 'right',
+        ticks: { callback: v => `${v}kg`, color: '#B45309', font: { size: 11 } },
+        grid: { display: false },
         border: { display: false },
       },
       x: {
