@@ -194,6 +194,11 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
               <label className="label">Notes</label>
               <textarea className="input resize-none" rows={3} value={form.notes} onChange={e => set('notes', e.target.value)} />
             </div>
+            <div className="col-span-2">
+              <label className="label">Invoice Notes</label>
+              <p className="text-xs text-gray-400 mb-1.5">Shown as a reminder when creating an invoice for this partner.</p>
+              <textarea className="input resize-none" rows={3} value={form.invoice_notes || ''} onChange={e => set('invoice_notes', e.target.value)} placeholder="e.g. Always one invoice behind — apply payment to oldest outstanding. Orders 5kg every 2 weeks around the 8th and 22nd." />
+            </div>
 
             {/* Branches / Locations */}
             {partner?.id && (

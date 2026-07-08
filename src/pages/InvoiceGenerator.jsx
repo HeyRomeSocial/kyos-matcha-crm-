@@ -324,6 +324,14 @@ kyosmatcha.com`
             />
           </div>
 
+          {/* Invoice notes banner */}
+          {selectedPartner?.invoice_notes && (
+            <div className="flex gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <span className="text-amber-500 mt-0.5 shrink-0">📋</span>
+              <p className="text-xs text-amber-800 leading-relaxed whitespace-pre-line">{selectedPartner.invoice_notes}</p>
+            </div>
+          )}
+
           {/* Branch picker */}
           {locations.length > 0 && (
             <div className="border-t border-gray-100 pt-4">
