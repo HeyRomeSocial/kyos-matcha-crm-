@@ -115,6 +115,7 @@ export default function InvoiceGenerator() {
   const [billTo, setBillTo] = useState({ name: '', address: '', contact: '', email: '' })
   const [fromAddress, setFromAddress] = useState(FROM_DEFAULTS)
   const [banking, setBanking] = useState(BANKING_DEFAULTS)
+  const [invoiceNote, setInvoiceNote] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -162,13 +163,22 @@ export default function InvoiceGenerator() {
       : [newItem('Premium Matcha A', 1, partner.price_per_kg || 0)]
     setLineItems([...matchaItems, newItem('Royal Mail Shipping Fee', 1, partner.shipping_fee || 7)])
 
-    // Fetch branches/locations for this partner
-    const { data: locs } = await supabase
-      .from('partner_locations')
-      .select('*')
-      .eq('partner_id', partner.id)
-      .order('label')
+    // Fetch branches/locations and oldest unpaid invoice for this partner
+    const [{ data: locs }, { data: unpaid }] = await Promise.all([
+      supabase.from('partner_locations').select('*').eq('partner_id', partner.id).order('label'),
+      supabase.from('orders')
+        .select('invoice_number, date')
+        .eq('partner_id', partner.id)
+        .eq('status', 'unpaid')
+        .order('date', { ascending: true })
+        .limit(1),
+    ])
     setLocations(locs || [])
+    if (unpaid?.length > 0) {
+      setInvoiceNote(`Please note: Invoice ${unpaid[0].invoice_number} remains outstanding. Kindly arrange payment at your earliest convenience.`)
+    } else {
+      setInvoiceNote('')
+    }
   }
 
   function selectLocation(loc) {
@@ -483,6 +493,18 @@ kyosmatcha.com`
           </div>
         </div>
 
+        {/* Invoice note */}
+        <div className="card p-5 space-y-2">
+          <label className="label">Note on Invoice <span className="text-gray-400 font-normal">(optional)</span></label>
+          <textarea
+            className="input resize-none text-xs"
+            rows={3}
+            value={invoiceNote}
+            onChange={e => setInvoiceNote(e.target.value)}
+            placeholder="e.g. Please note: Invoice KM-230 remains outstanding…"
+          />
+        </div>
+
         {!savedPdfUrl ? (
           <button
             onClick={handleSave}
@@ -539,6 +561,7 @@ kyosmatcha.com`
             total={total}
             fromAddress={fromAddress}
             banking={banking}
+            invoiceNote={invoiceNote}
           />
         </div>
       </div>
@@ -547,7 +570,7 @@ kyosmatcha.com`
 }
 
 const InvoicePreview = React.forwardRef(function InvoicePreview(
-  { invoiceNumber, invoiceDate, partner, billTo, lineItems, subtotal, total, fromAddress, banking },
+  { invoiceNumber, invoiceDate, partner, billTo, lineItems, subtotal, total, fromAddress, banking, invoiceNote },
   ref
 ) {
   const FROM = fromAddress || FROM_DEFAULTS
@@ -646,6 +669,22 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
           </div>
         </div>
       </div>
+
+      {/* Invoice note */}
+      {invoiceNote && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fcd34d',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          fontSize: '11px',
+          color: '#92400e',
+          lineHeight: '1.6',
+        }}>
+          {invoiceNote}
+        </div>
+      )}
 
       {/* Banking */}
       <div style={{
