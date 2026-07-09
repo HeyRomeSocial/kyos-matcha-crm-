@@ -451,8 +451,8 @@ function InventoryWidget({ inventory, onUpdate }) {
 function NoOrderModal({ partners, onClose, navigate }) {
   const now = new Date()
   const rows = partners.map(p => {
-    const days = p.last_order_date
-      ? Math.floor((now - new Date(p.last_order_date)) / 86400000)
+    const days = p.combined_last_order
+      ? Math.floor((now - new Date(p.combined_last_order)) / 86400000)
       : null
     return { ...p, daysSince: days }
   }).sort((a, b) => (b.daysSince ?? 9999) - (a.daysSince ?? 9999))
@@ -495,7 +495,7 @@ function NoOrderModal({ partners, onClose, navigate }) {
                       ? <a href={`mailto:${p.email}`} onClick={e => e.stopPropagation()} className="text-[#3D6034] hover:underline">{p.email}</a>
                       : '—'}
                   </td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{p.last_order_date ? formatDate(p.last_order_date) : 'Never'}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{p.combined_last_order ? formatDate(p.combined_last_order) : 'Never'}</td>
                   <td className="px-5 py-3">
                     {p.daysSince != null ? (
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
@@ -618,7 +618,15 @@ export default function Dashboard() {
         supabase.from('goals').select('*').eq('month', currentMonthStr).maybeSingle(),
         supabase.from('inventory').select('*').order('name'),
       ])
-      setPartners(p || [])
+      const ordersByPartner = (o || []).reduce((acc, order) => {
+        if (!order.partner_id) return acc
+        if (!acc[order.partner_id] || order.date > acc[order.partner_id]) acc[order.partner_id] = order.date
+        return acc
+      }, {})
+      setPartners((p || []).map(partner => ({
+        ...partner,
+        combined_last_order: [partner.last_order_date, ordersByPartner[partner.id]].filter(Boolean).sort().pop() || null,
+      })))
       setOrders(o || [])
       setTasks(t || [])
       setCurrentGoal(g || null)
@@ -1223,7 +1231,7 @@ export default function Dashboard() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {p.last_order_date ? `Last order ${formatDate(p.last_order_date)}` : 'No orders yet'}
+                    {p.combined_last_order ? `Last order ${formatDate(p.combined_last_order)}` : 'No orders yet'}
                   </p>
                 </div>
                 <ChevronRight size={14} className="text-gray-300 flex-shrink-0 ml-2" />
