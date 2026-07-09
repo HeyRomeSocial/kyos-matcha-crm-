@@ -14,6 +14,9 @@ import { Bar, Line } from 'react-chartjs-2'
 import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO, getDaysInMonth } from 'date-fns'
 import { Download, Calendar, DollarSign, Edit2, Check, History, Send } from 'lucide-react'
 import { restockInventory, adjustInventory } from '../lib/inventory'
+import { syncToSheets } from '../lib/sheetsSync'
+import toast from 'react-hot-toast'
+import { RefreshCw } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
 
@@ -603,6 +606,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [hoverOrder, setHoverOrder] = useState(null)
   const [showNoOrderModal, setShowNoOrderModal] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+
+  async function handleSyncNow() {
+    setSyncing(true)
+    await syncToSheets()
+    setSyncing(false)
+    toast.success('Synced to Google Sheets')
+  }
 
   function toggleWidget(id, val) {
     setPrefs(p => {
@@ -763,12 +774,19 @@ export default function Dashboard() {
     .filter(o => o.status === 'paid' && o.date >= yearStart)
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // Chart — months from June 2026 to now
+  // Chart — from earliest sample sent date or June 2026 (whichever is earlier)
   const CRM_START = new Date(2026, 5, 1) // June 2026
+  const earliestSample = partners.reduce((min, p) => {
+    if (!p.sample_sent_at) return min
+    return (!min || p.sample_sent_at < min) ? p.sample_sent_at : min
+  }, null)
+  const chartStart = earliestSample && earliestSample < '2026-06-01'
+    ? new Date(earliestSample.slice(0, 7) + '-01')
+    : CRM_START
   const now = new Date()
-  const totalMonths = (now.getFullYear() - CRM_START.getFullYear()) * 12 + (now.getMonth() - CRM_START.getMonth()) + 1
+  const totalMonths = (now.getFullYear() - chartStart.getFullYear()) * 12 + (now.getMonth() - chartStart.getMonth()) + 1
   const months = Array.from({ length: totalMonths }, (_, i) => {
-    const d = new Date(CRM_START.getFullYear(), CRM_START.getMonth() + i, 1)
+    const d = new Date(chartStart.getFullYear(), chartStart.getMonth() + i, 1)
     return {
       label: format(d, 'MMM yy'),
       start: format(startOfMonth(d), 'yyyy-MM-dd'),
@@ -780,6 +798,9 @@ export default function Dashboard() {
   )
   const monthlyKg = months.map(m =>
     sumKg(orders.filter(o => o.date >= m.start && o.date <= m.end))
+  )
+  const monthlySamples = months.map(m =>
+    partners.filter(p => p.sample_sent_at && p.sample_sent_at >= m.start && p.sample_sent_at <= m.end).length
   )
   const kgLabelPlugin = {
     id: 'kgLabels',
@@ -802,28 +823,60 @@ export default function Dashboard() {
 
   const chartData = {
     labels: months.map(m => m.label),
-    datasets: [{
-      type: 'bar',
-      label: 'Revenue (£)',
-      data: monthlyRevenue,
-      backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
-      borderRadius: 6,
-      borderSkipped: false,
-      hoverBackgroundColor: '#2E4A27',
-      maxBarThickness: 56,
-    }],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Revenue (£)',
+        data: monthlyRevenue,
+        backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
+        borderRadius: 6,
+        borderSkipped: false,
+        hoverBackgroundColor: '#2E4A27',
+        maxBarThickness: 56,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line',
+        label: 'Samples Sent',
+        data: monthlySamples,
+        borderColor: '#7C3AED',
+        backgroundColor: 'rgba(124,58,237,0.12)',
+        fill: false,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#7C3AED',
+        borderWidth: 2,
+        yAxisID: 'samples',
+      },
+    ],
   }
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: true,
+        position: 'top',
+        align: 'end',
+        labels: {
+          boxWidth: 10,
+          boxHeight: 10,
+          borderRadius: 3,
+          useBorderRadius: true,
+          font: { size: 11 },
+          color: '#6b7280',
+        },
+      },
       tooltip: {
         backgroundColor: '#1a1a1a',
         padding: 10,
         cornerRadius: 8,
         callbacks: {
-          label: ctx => `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}  ·  ${monthlyKg[ctx.dataIndex]?.toFixed(1)} kg`,
+          label: ctx => ctx.datasetIndex === 0
+            ? `  Revenue: £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}  ·  ${monthlyKg[ctx.dataIndex]?.toFixed(1)} kg`
+            : `  Samples Sent: ${ctx.raw}`,
         },
       },
     },
@@ -832,6 +885,13 @@ export default function Dashboard() {
         ticks: { callback: v => `£${Number(v).toLocaleString('en-GB')}`, color: '#9ca3af', font: { size: 11 } },
         grid: { color: '#f3f4f6' },
         border: { display: false },
+      },
+      samples: {
+        position: 'right',
+        ticks: { callback: v => `${v}`, color: '#7C3AED', font: { size: 11 }, stepSize: 1 },
+        grid: { display: false },
+        border: { display: false },
+        title: { display: true, text: 'Samples', color: '#7C3AED', font: { size: 10 } },
       },
       x: {
         ticks: { color: '#6b7280', font: { size: 12 } },
@@ -997,6 +1057,13 @@ export default function Dashboard() {
             <Settings2 size={13} /> Customise
           </button>
           <button
+            onClick={handleSyncNow}
+            disabled={syncing}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} /> {syncing ? 'Syncing…' : 'Sync to Sheets'}
+          </button>
+          <button
             onClick={downloadReport}
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-[#3D6034] rounded-lg hover:bg-[#2E4A27] transition-colors"
           >
@@ -1071,7 +1138,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {prefs.chart && (
             <div className="card p-5 lg:col-span-2">
-              <SectionHeader title="Monthly Revenue" sub="Last 12 months — invoices created in CRM" navigate={navigate} />
+              <SectionHeader title="Monthly KPI" sub="Revenue (£) + samples sent per month" navigate={navigate} />
               <div className="h-52">
                 <Bar data={chartData} options={chartOptions} plugins={[kgLabelPlugin]} />
               </div>

@@ -11,7 +11,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(pbcopy)",
-      "Bash(# Use a high quality matcha field from the web as placeholder, *)"
+      "Bash(# Use a high quality matcha field from the web as placeholder, *)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(rm \"/Users/romeabalain/Desktop/Kyos Matcha Invoice.html\")"
     ]
   }
 }
