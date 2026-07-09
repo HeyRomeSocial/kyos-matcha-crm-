@@ -12,7 +12,7 @@ import {
 } from 'chart.js'
 import { Bar, Line } from 'react-chartjs-2'
 import { format, subMonths, startOfMonth, endOfMonth, isPast, parseISO, getDaysInMonth } from 'date-fns'
-import { Download, Calendar, DollarSign, Edit2, Check, History } from 'lucide-react'
+import { Download, Calendar, DollarSign, Edit2, Check, History, Send } from 'lucide-react'
 import { restockInventory, adjustInventory } from '../lib/inventory'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, LineElement, PointElement, Filler)
@@ -29,7 +29,10 @@ const KPI_CARDS = [
   { id: 'kpi_alltime',   label: 'All Time Revenue',      defaultOn: true },
   { id: 'kpi_pouches',      label: 'Retail Pouches Sold',        defaultOn: true },
   { id: 'kpi_kits',         label: 'Starter Kits Sold',          defaultOn: true },
-  { id: 'kpi_no_order',     label: 'Active — No Order This Month', defaultOn: true },
+  { id: 'kpi_no_order',       label: 'Active — No Order This Month', defaultOn: true },
+  { id: 'kpi_samples_mtd',   label: 'Samples Sent This Month',      defaultOn: true },
+  { id: 'kpi_samples_total', label: 'Samples Sent All Time',        defaultOn: true },
+  { id: 'kpi_converted',     label: 'Converted from Sample',        defaultOn: true },
 ]
 
 const WIDGETS = [
@@ -45,6 +48,7 @@ const WIDGETS = [
   { id: 'no_order',   label: 'Active — No Order This Month', defaultOn: true },
   { id: 'inventory',  label: 'Matcha Inventory',            defaultOn: true },
   { id: 'mission',    label: 'Mission Progress',            defaultOn: false },
+  { id: 'samples',    label: 'Recent Samples Sent',         defaultOn: true },
 ]
 
 // Conversion gauge — SVG semicircle
@@ -701,6 +705,22 @@ export default function Dashboard() {
   const sampleSentCount = partners.filter(p => p.status === 'sample_sent').length
   const prospectCount = partners.filter(p => p.status === 'prospect').length
 
+  // Sample stats
+  const samplesSentThisMonth = partners.filter(p => p.sample_sent_at && p.sample_sent_at.slice(0,7) === thisMonthStart.slice(0,7)).length
+  const samplesSentLastMonth = partners.filter(p => p.sample_sent_at && p.sample_sent_at.slice(0,7) === lastMonthStart.slice(0,7)).length
+  const samplesMTDTrend = samplesSentLastMonth > 0 ? ((samplesSentThisMonth - samplesSentLastMonth) / samplesSentLastMonth) * 100 : null
+  const samplesSentAllTime = partners.filter(p => p.sample_sent_at).length
+
+  // Converted from sample = had sample_sent_at AND has placed at least one order
+  const convertedFromSample = partners.filter(p => p.sample_sent_at && ((Number(p.total_orders) || 0) > 0 || crmPartnerIdsSet.has(p.id))).length
+  const conversionRate = samplesSentAllTime > 0 ? ((convertedFromSample / samplesSentAllTime) * 100).toFixed(0) : 0
+
+  // Recent sample sends — last 5
+  const recentSamples = [...partners]
+    .filter(p => p.sample_sent_at)
+    .sort((a, b) => b.sample_sent_at.localeCompare(a.sample_sent_at))
+    .slice(0, 5)
+
   // Outstanding — CRM invoices unpaid + overdue
   const outstanding = orders
     .filter(o => getOrderStatus(o) !== 'paid')
@@ -997,6 +1017,9 @@ export default function Dashboard() {
           {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
           {prefs.kpi_kits && <KpiCard label="Starter Kits Sold" value={totalStarterKitsSold} sub="kits · CRM orders" icon={Package} color="#B45309" />}
           {prefs.kpi_no_order && <KpiCard label={`No Order — ${format(new Date(), 'MMM yyyy')}`} value={noOrderThisMonth.length} sub={`of ${activePartners} active partners`} icon={AlertCircle} color="#f59e0b" />}
+          {prefs.kpi_samples_mtd && <KpiCard label={`Samples Sent — ${format(new Date(), 'MMM yyyy')}`} value={samplesSentThisMonth} sub={`${samplesSentLastMonth} sent last month`} icon={Send} trend={samplesMTDTrend} color="#7C3AED" />}
+          {prefs.kpi_samples_total && <KpiCard label="Samples Sent All Time" value={samplesSentAllTime} sub={`${sampleSentCount} still awaiting first order`} icon={Send} color="#7C3AED" />}
+          {prefs.kpi_converted && <KpiCard label="Converted from Sample" value={`${convertedFromSample} (${conversionRate}%)`} sub={`of ${samplesSentAllTime} total samples sent`} icon={Users} color="#0F6E56" />}
         </div>
       )}
 
@@ -1237,6 +1260,36 @@ export default function Dashboard() {
                 <ChevronRight size={14} className="text-gray-300 flex-shrink-0 ml-2" />
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Recent Samples Sent ── */}
+      {prefs.samples && recentSamples.length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Recent Samples Sent</h3>
+              <p className="text-xs text-gray-400 mt-0.5">{convertedFromSample} of {samplesSentAllTime} converted ({conversionRate}%)</p>
+            </div>
+            <span className="text-xs text-[#7C3AED] font-medium bg-purple-50 px-2.5 py-1 rounded-full">{samplesSentThisMonth} this month</span>
+          </div>
+          <div className="space-y-2">
+            {recentSamples.map(p => {
+              const hasOrdered = (Number(p.total_orders) || 0) > 0 || crmPartnerIdsSet.has(p.id)
+              return (
+                <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50/50 rounded-lg px-2 -mx-2" onClick={() => navigate(`/partners/${p.id}`)}>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                    <p className="text-xs text-gray-400">Sampled {formatDate(p.sample_sent_at)}</p>
+                  </div>
+                  {hasOrdered
+                    ? <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Converted ✓</span>
+                    : <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Awaiting</span>
+                  }
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
