@@ -50,6 +50,7 @@ export default function PartnerDetail() {
   const crmKg = orders.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
   const crmSpend = orders.reduce((s, o) => s + (Number(o.total) || 0), 0)
   const crmOrders = orders.length
+  const crmLastDate = orders.length > 0 ? orders.reduce((latest, o) => o.date > latest ? o.date : latest, orders[0].date) : null
 
   // Combined totals
   const totalKg = historicalKg + crmKg
@@ -65,7 +66,7 @@ export default function PartnerDetail() {
     ['Shipping Fee', partner.shipping_fee ? formatCurrency(partner.shipping_fee) : null],
     ['Projected KG/mo', partner.projected_kg_month ? `${partner.projected_kg_month}kg` : null],
     ['Reorder Frequency', partner.reorder_frequency_days ? `Every ${partner.reorder_frequency_days} days` : null],
-    ['Last Order', formatDate(partner.last_order_date)],
+    ['Last Order', formatDate([partner.last_order_date, crmLastDate].filter(Boolean).sort().pop())],
     ['Next Expected', formatDate(partner.next_expected_order)],
   ]
 
@@ -126,7 +127,7 @@ export default function PartnerDetail() {
           { icon: UserPlus, label: 'Added to CRM', date: partner.created_at ? formatDate(partner.created_at.slice(0,10)) : null, color: 'bg-blue-100 text-blue-600' },
           { icon: Send, label: 'Sample Sent', date: partner.sample_sent_at ? formatDate(partner.sample_sent_at) : null, color: 'bg-purple-100 text-purple-600' },
           { icon: ShoppingBag, label: 'First Order', date: firstOrder ? formatDate(firstOrder.date) : null, sub: firstOrder?.invoice_number, color: 'bg-amber-100 text-amber-600' },
-          { icon: TrendingUp, label: 'Last Order', date: partner.last_order_date ? formatDate(partner.last_order_date) : null, color: 'bg-green-100 text-[#3D6034]' },
+          { icon: TrendingUp, label: 'Last Order', date: [partner.last_order_date, crmLastDate].filter(Boolean).sort().pop() ? formatDate([partner.last_order_date, crmLastDate].filter(Boolean).sort().pop()) : null, color: 'bg-green-100 text-[#3D6034]' },
         ]
         return (
           <div className="card p-5">
