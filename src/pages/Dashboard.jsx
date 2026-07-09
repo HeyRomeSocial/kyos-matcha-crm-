@@ -706,8 +706,10 @@ export default function Dashboard() {
   const prospectCount = partners.filter(p => p.status === 'prospect').length
 
   // Sample stats
-  const samplesSentThisMonth = partners.filter(p => p.sample_sent_at && p.sample_sent_at.slice(0,7) === thisMonthStart.slice(0,7)).length
-  const samplesSentLastMonth = partners.filter(p => p.sample_sent_at && p.sample_sent_at.slice(0,7) === lastMonthStart.slice(0,7)).length
+  const thisMonthKey = format(new Date(), 'yyyy-MM')
+  const lastMonthKey = format(subMonths(new Date(), 1), 'yyyy-MM')
+  const samplesSentThisMonth = partners.filter(p => p.sample_sent_at && p.sample_sent_at.slice(0,7) === thisMonthKey).length
+  const samplesSentLastMonth = partners.filter(p => p.sample_sent_at && p.sample_sent_at.slice(0,7) === lastMonthKey).length
   const samplesMTDTrend = samplesSentLastMonth > 0 ? ((samplesSentThisMonth - samplesSentLastMonth) / samplesSentLastMonth) * 100 : null
   const samplesSentAllTime = partners.filter(p => p.sample_sent_at).length
 
