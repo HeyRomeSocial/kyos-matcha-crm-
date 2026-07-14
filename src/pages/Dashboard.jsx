@@ -607,6 +607,8 @@ export default function Dashboard() {
   const [hoverOrder, setHoverOrder] = useState(null)
   const [showNoOrderModal, setShowNoOrderModal] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [period, setPeriod] = useState('week')
+  const [showAllTime, setShowAllTime] = useState(true)
 
   async function handleSyncNow() {
     setSyncing(true)
@@ -769,45 +771,126 @@ export default function Dashboard() {
   const kgMTDTrend = kgPrevMonth > 0 ? ((kgMTD - kgPrevMonth) / kgPrevMonth) * 100 : null
 
   // Revenue YTD (paid only, incl. shipping)
-  const yearStart = `${new Date().getFullYear()}-01-01`
   const revYTD = orders
-    .filter(o => o.status === 'paid' && o.date >= yearStart)
+    .filter(o => o.status === 'paid' && o.date >= `${new Date().getFullYear()}-01-01`)
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // Chart — from earliest sample sent date or June 2026 (whichever is earlier)
-  const CRM_START = new Date(2026, 5, 1) // June 2026
-  const earliestSample = partners.reduce((min, p) => {
-    if (!p.sample_sent_at) return min
-    return (!min || p.sample_sent_at < min) ? p.sample_sent_at : min
-  }, null)
-  const chartStart = earliestSample && earliestSample < '2026-06-01'
-    ? new Date(earliestSample.slice(0, 7) + '-01')
-    : CRM_START
+  // ── Period date ranges ──
   const now = new Date()
-  const totalMonths = (now.getFullYear() - chartStart.getFullYear()) * 12 + (now.getMonth() - chartStart.getMonth()) + 1
-  const months = Array.from({ length: totalMonths }, (_, i) => {
-    const d = new Date(chartStart.getFullYear(), chartStart.getMonth() + i, 1)
-    return {
-      label: format(d, 'MMM yy'),
-      start: format(startOfMonth(d), 'yyyy-MM-dd'),
-      end: format(endOfMonth(d), 'yyyy-MM-dd'),
+  const todayStr = format(now, 'yyyy-MM-dd')
+  // Week: Mon–Sun
+  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1
+  const weekStart = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek), 'yyyy-MM-dd')
+  const weekEnd   = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 6), 'yyyy-MM-dd')
+  // Previous week
+  const prevWeekStart = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - 7), 'yyyy-MM-dd')
+  const prevWeekEnd   = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - 1), 'yyyy-MM-dd')
+  // Year
+  const yearStart = `${now.getFullYear()}-01-01`
+  const yearEnd   = `${now.getFullYear()}-12-31`
+  const prevYearStart = `${now.getFullYear() - 1}-01-01`
+  const prevYearEnd   = `${now.getFullYear() - 1}-12-31`
+
+  function periodRange(p) {
+    if (p === 'day')   return { start: todayStr, end: todayStr }
+    if (p === 'week')  return { start: weekStart, end: weekEnd }
+    if (p === 'month') return { start: thisMonthStart, end: thisMonthEnd }
+    return { start: yearStart, end: yearEnd }
+  }
+  function prevPeriodRange(p) {
+    if (p === 'day')   return { start: format(subMonths(now, 0), 'yyyy-MM-dd').replace(/\d{2}$/, String(now.getDate() - 1).padStart(2,'0')), end: format(new Date(now.getTime() - 86400000), 'yyyy-MM-dd') }
+    if (p === 'week')  return { start: prevWeekStart, end: prevWeekEnd }
+    if (p === 'month') return { start: lastMonthStart, end: lastMonthEnd }
+    return { start: prevYearStart, end: prevYearEnd }
+  }
+
+  const pRange  = periodRange(period)
+  const ppRange = prevPeriodRange(period)
+
+  const periodOrders     = orders.filter(o => o.date >= pRange.start && o.date <= pRange.end)
+  const prevPeriodOrders = orders.filter(o => o.date >= ppRange.start && o.date <= ppRange.end)
+
+  const periodRevenue     = periodOrders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const prevPeriodRevenue = prevPeriodOrders.reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const periodRevTrend    = prevPeriodRevenue > 0 ? ((periodRevenue - prevPeriodRevenue) / prevPeriodRevenue) * 100 : null
+  const periodPaid        = periodOrders.filter(o => getOrderStatus(o) === 'paid').reduce((s, o) => s + (Number(o.total) || 0), 0)
+  const periodOutstanding = periodOrders.filter(o => getOrderStatus(o) !== 'paid').reduce((s, o) => s + (Number(o.total) || 0), 0)
+
+  const periodKg          = sumKg(periodOrders)
+  const prevPeriodKg      = sumKg(prevPeriodOrders)
+  const periodKgTrend     = prevPeriodKg > 0 ? ((periodKg - prevPeriodKg) / prevPeriodKg) * 100 : null
+
+  const periodOrderCount  = periodOrders.length
+  const prevOrderCount    = prevPeriodOrders.length
+  const periodOrderTrend  = prevOrderCount > 0 ? ((periodOrderCount - prevOrderCount) / prevOrderCount) * 100 : null
+  const periodAOV         = periodOrderCount > 0 ? periodRevenue / periodOrderCount : 0
+
+  const periodActiveCafes = new Set(periodOrders.map(o => o.partner_id).filter(Boolean)).size
+
+  // New cafes = partners whose first ever order falls in this period
+  const firstOrderByPartner2 = orders.reduce((acc, o) => {
+    if (!o.partner_id || !o.date) return acc
+    if (!acc[o.partner_id] || o.date < acc[o.partner_id]) acc[o.partner_id] = o.date
+    return acc
+  }, {})
+  const periodNewCafes = Object.values(firstOrderByPartner2).filter(d => d >= pRange.start && d <= pRange.end).length
+
+  const periodSamples     = partners.filter(p => p.sample_sent_at && p.sample_sent_at >= pRange.start && p.sample_sent_at <= pRange.end).length
+  const prevPeriodSamples = partners.filter(p => p.sample_sent_at && p.sample_sent_at >= ppRange.start && p.sample_sent_at <= ppRange.end).length
+  const periodSampleTrend = prevPeriodSamples > 0 ? ((periodSamples - prevPeriodSamples) / prevPeriodSamples) * 100 : null
+
+  const periodLabel = {
+    day:   `Today — ${format(now, 'd MMM yyyy')}`,
+    week:  `This Week — ${format(new Date(weekStart), 'd MMM')}–${format(new Date(weekEnd), 'd MMM yyyy')}`,
+    month: `This Month — ${format(now, 'MMMM yyyy')}`,
+    year:  `This Year — ${now.getFullYear()}`,
+  }[period]
+
+  // ── Chart — period-aware ──
+  function buildChartSlices() {
+    if (period === 'day') {
+      // Last 7 days
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + i)
+        const ds = format(d, 'yyyy-MM-dd')
+        return { label: format(d, 'EEE d'), start: ds, end: ds }
+      })
     }
-  })
-  const monthlyRevenue = months.map(m =>
-    orders.filter(o => o.date >= m.start && o.date <= m.end).reduce((s, o) => s + (o.total || 0), 0)
-  )
-  const monthlyKg = months.map(m =>
-    sumKg(orders.filter(o => o.date >= m.start && o.date <= m.end))
-  )
-  const monthlySamples = months.map(m =>
-    partners.filter(p => p.sample_sent_at && p.sample_sent_at >= m.start && p.sample_sent_at <= m.end).length
-  )
+    if (period === 'week') {
+      // Last 8 weeks
+      return Array.from({ length: 8 }, (_, i) => {
+        const wOff = 7 - i
+        const wS = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - (wOff - 1) * 7)
+        const wE = new Date(wS.getFullYear(), wS.getMonth(), wS.getDate() + 6)
+        return { label: `W${format(wS, 'w')}`, start: format(wS, 'yyyy-MM-dd'), end: format(wE, 'yyyy-MM-dd') }
+      })
+    }
+    if (period === 'year') {
+      // Months in current year
+      return Array.from({ length: now.getMonth() + 1 }, (_, i) => {
+        const d = new Date(now.getFullYear(), i, 1)
+        return { label: format(d, 'MMM'), start: format(startOfMonth(d), 'yyyy-MM-dd'), end: format(endOfMonth(d), 'yyyy-MM-dd') }
+      })
+    }
+    // month: months from CRM start to now
+    const CRM_START = new Date(2026, 5, 1)
+    const totalM = (now.getFullYear() - CRM_START.getFullYear()) * 12 + (now.getMonth() - CRM_START.getMonth()) + 1
+    return Array.from({ length: totalM }, (_, i) => {
+      const d = new Date(CRM_START.getFullYear(), CRM_START.getMonth() + i, 1)
+      return { label: format(d, 'MMM yy'), start: format(startOfMonth(d), 'yyyy-MM-dd'), end: format(endOfMonth(d), 'yyyy-MM-dd') }
+    })
+  }
+
+  const chartSlices = buildChartSlices()
+  const chartRevenues = chartSlices.map(s => orders.filter(o => o.date >= s.start && o.date <= s.end).reduce((t, o) => t + (o.total || 0), 0))
+  const chartKgs = chartSlices.map(s => sumKg(orders.filter(o => o.date >= s.start && o.date <= s.end)))
+
   const kgLabelPlugin = {
     id: 'kgLabels',
     afterDatasetsDraw(chart) {
       const { ctx, data, scales: { x, y } } = chart
       data.datasets[0].data.forEach((val, i) => {
-        const kg = monthlyKg[i]
+        const kg = chartKgs[i]
         if (!kg) return
         const xPos = x.getPixelForValue(i)
         const yPos = y.getPixelForValue(val)
@@ -822,61 +905,29 @@ export default function Dashboard() {
   }
 
   const chartData = {
-    labels: months.map(m => m.label),
-    datasets: [
-      {
-        type: 'bar',
-        label: 'Revenue (£)',
-        data: monthlyRevenue,
-        backgroundColor: months.map((_, i) => i === months.length - 1 ? '#6B9E5E' : '#3D6034'),
-        borderRadius: 6,
-        borderSkipped: false,
-        hoverBackgroundColor: '#2E4A27',
-        maxBarThickness: 56,
-        yAxisID: 'y',
-      },
-      {
-        type: 'line',
-        label: 'Samples Sent',
-        data: monthlySamples,
-        borderColor: '#7C3AED',
-        backgroundColor: 'rgba(124,58,237,0.12)',
-        fill: false,
-        tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        pointBackgroundColor: '#7C3AED',
-        borderWidth: 2,
-        yAxisID: 'samples',
-      },
-    ],
+    labels: chartSlices.map(s => s.label),
+    datasets: [{
+      type: 'bar',
+      label: 'Revenue (£)',
+      data: chartRevenues,
+      backgroundColor: chartSlices.map((_, i) => i === chartSlices.length - 1 ? '#6B9E5E' : '#3D6034'),
+      borderRadius: 6,
+      borderSkipped: false,
+      hoverBackgroundColor: '#2E4A27',
+      maxBarThickness: 56,
+    }],
   }
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        align: 'end',
-        labels: {
-          boxWidth: 10,
-          boxHeight: 10,
-          borderRadius: 3,
-          useBorderRadius: true,
-          font: { size: 11 },
-          color: '#6b7280',
-        },
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: '#1a1a1a',
         padding: 10,
         cornerRadius: 8,
         callbacks: {
-          label: ctx => ctx.datasetIndex === 0
-            ? `  Revenue: £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}  ·  ${monthlyKg[ctx.dataIndex]?.toFixed(1)} kg`
-            : `  Samples Sent: ${ctx.raw}`,
+          label: ctx => `  £${Number(ctx.raw).toLocaleString('en-GB', { minimumFractionDigits: 2 })}  ·  ${chartKgs[ctx.dataIndex]?.toFixed(1)} kg`,
         },
       },
     },
@@ -885,13 +936,6 @@ export default function Dashboard() {
         ticks: { callback: v => `£${Number(v).toLocaleString('en-GB')}`, color: '#9ca3af', font: { size: 11 } },
         grid: { color: '#f3f4f6' },
         border: { display: false },
-      },
-      samples: {
-        position: 'right',
-        ticks: { callback: v => `${v}`, color: '#7C3AED', font: { size: 11 }, stepSize: 1 },
-        grid: { display: false },
-        border: { display: false },
-        title: { display: true, text: 'Samples', color: '#7C3AED', font: { size: 10 } },
       },
       x: {
         ticks: { color: '#6b7280', font: { size: 12 } },
@@ -1046,50 +1090,94 @@ export default function Dashboard() {
         today={today}
       />
 
-      {/* ── Top bar: customise + download report ── */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400">{Object.values(prefs).filter(Boolean).length} of {WIDGETS.length} widgets showing</p>
+      {/* ── Top bar: period toggle + actions ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+          {['day','week','month','year'].map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
+                period === p ? 'bg-white text-[#3D6034] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCustomising(true)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => setShowAllTime(v => !v)}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+              showAllTime ? 'bg-[#EEF3EC] text-[#3D6034] border-[#3D6034]/30' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+            }`}
           >
-            <Settings2 size={13} /> Customise
+            <TrendingUp size={13} /> All Time {showAllTime ? 'On' : 'Off'}
           </button>
-          <button
-            onClick={handleSyncNow}
-            disabled={syncing}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+          <button onClick={handleSyncNow} disabled={syncing} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
             <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} /> {syncing ? 'Syncing…' : 'Sync to Sheets'}
           </button>
-          <button
-            onClick={downloadReport}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-[#3D6034] rounded-lg hover:bg-[#2E4A27] transition-colors"
-          >
-            <Download size={13} /> Download Report
+          <button onClick={() => setCustomising(true)} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <Settings2 size={13} /> Customise
+          </button>
+          <button onClick={downloadReport} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-[#3D6034] rounded-lg hover:bg-[#2E4A27] transition-colors">
+            <Download size={13} /> Export
           </button>
         </div>
       </div>
 
-      {/* ── KPI Cards ── */}
-      {prefs.kpis && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {prefs.kpi_kg && <KpiCard label="Total KG Sold" value={`${totalKgAllTime.toFixed(1)}kg`} sub="historical + CRM" icon={Package} trend={kgTrend} />}
-          {prefs.kpi_revenue && <KpiCard label="Total Revenue" value={formatCurrency(totalRevenueAllTime)} sub="historical + all paid CRM invoices" icon={TrendingUp} color="#0F6E56" />}
-          {prefs.kpi_partners && <KpiCard label="Partners Ordering" value={orderingPartners} sub={`of ${partners.length} on the list`} icon={Users} color="#534AB7" />}
-          {prefs.kpi_outstanding && <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="unpaid + overdue invoices" icon={AlertCircle} color="#dc2626" />}
-          {prefs.kpi_mtd && <KpiCard label={`Revenue MTD — ${format(new Date(), 'MMM yyyy')}`} value={formatCurrency(revMTD)} sub="paid invoices · this month" icon={DollarSign} trend={revMTDTrend} color="#0F6E56" />}
-          {prefs.kpi_kg_mtd && <KpiCard label={`KG MTD — ${format(new Date(), 'MMM yyyy')}`} value={`${kgMTD.toFixed(1)}kg`} sub="matcha kg · this month" icon={Package} trend={kgMTDTrend} />}
-          {prefs.kpi_ytd && <KpiCard label={`Revenue YTD — ${new Date().getFullYear()}`} value={formatCurrency(revYTD)} sub="paid invoices · this year" icon={DollarSign} color="#0F6E56" />}
-          {prefs.kpi_alltime && <KpiCard label="All Time Revenue" value={formatCurrency(totalRevenueAllTime)} sub="historical + all paid CRM invoices" icon={DollarSign} color="#0F6E56" />}
-          {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
-          {prefs.kpi_kits && <KpiCard label="Starter Kits Sold" value={totalStarterKitsSold} sub="kits · CRM orders" icon={Package} color="#B45309" />}
-          {prefs.kpi_no_order && <KpiCard label={`No Order — ${format(new Date(), 'MMM yyyy')}`} value={noOrderThisMonth.length} sub={`of ${activePartners} active partners`} icon={AlertCircle} color="#f59e0b" />}
-          {prefs.kpi_samples_mtd && <KpiCard label={`Samples Sent — ${format(new Date(), 'MMM yyyy')}`} value={samplesSentThisMonth} sub={`${samplesSentLastMonth} sent last month`} icon={Send} trend={samplesMTDTrend} color="#7C3AED" />}
-          {prefs.kpi_samples_total && <KpiCard label="Samples Sent All Time" value={samplesSentAllTime} sub={`${sampleSentCount} still awaiting first order`} icon={Send} color="#7C3AED" />}
-          {prefs.kpi_converted && <KpiCard label="Converted from Sample" value={`${convertedFromSample} (${conversionRate}%)`} sub={`of ${samplesSentAllTime} total samples sent`} icon={Users} color="#0F6E56" />}
+      {/* ── All Time strip ── */}
+      {showAllTime && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+          {[
+            { label: 'All Time Revenue', value: formatCurrency(totalRevenueAllTime), sub: 'Historical + CRM' },
+            { label: 'Total KG Sold', value: `${totalKgAllTime.toFixed(1)} kg`, sub: 'Historical + CRM' },
+            { label: 'Partners Ordering', value: orderingPartners, sub: `of ${partners.length} total` },
+            { label: 'Sample Conversion', value: `${conversionRate}%`, sub: `${convertedFromSample} of ${samplesSentAllTime} sampled` },
+            { label: 'Total Invoices', value: orders.length, sub: 'Created in CRM' },
+          ].map(item => (
+            <div key={item.label} className="bg-white px-5 py-4">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{item.label}</p>
+              <p className="text-xl font-bold text-gray-900 mt-1 tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>{item.value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{item.sub}</p>
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* ── Period KPI Cards ── */}
+      {prefs.kpis && (
+        <>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{periodLabel}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Featured revenue card */}
+            <div className="card p-5 bg-[#3D6034] border-[#3D6034] text-white">
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Revenue Invoiced</p>
+                <div className="p-2 rounded-xl bg-white/10"><DollarSign size={16} className="text-white" /></div>
+              </div>
+              <p className="text-3xl font-bold tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(periodRevenue)}</p>
+              <p className="text-xs text-white/60 mt-1">{formatCurrency(periodPaid)} paid · {formatCurrency(periodOutstanding)} outstanding</p>
+              {periodRevTrend != null && (
+                <span className={`inline-flex items-center text-xs font-semibold mt-2 px-2 py-0.5 rounded-full ${periodRevTrend >= 0 ? 'bg-white/20 text-white' : 'bg-red-400/30 text-white'}`}>
+                  {periodRevTrend >= 0 ? '↑' : '↓'} {Math.abs(periodRevTrend).toFixed(1)}% vs previous
+                </span>
+              )}
+            </div>
+            <KpiCard label="Orders" value={periodOrderCount} sub={`AOV ${formatCurrency(periodAOV)}`} icon={ShoppingBag} trend={periodOrderTrend} />
+            <KpiCard label="Matcha Shipped" value={`${periodKg.toFixed(1)} kg`} sub="Invoiced this period" icon={Package} trend={periodKgTrend} />
+            <KpiCard label="Active Cafés" value={periodActiveCafes} sub={`${activePartners} active partners overall`} icon={Users} color="#534AB7" />
+            <KpiCard label="New Cafés" value={periodNewCafes} sub="First order this period" icon={Users} color="#0F6E56" />
+            <KpiCard label="Samples Sent" value={periodSamples} sub={`${samplesSentAllTime} all time`} icon={Send} trend={periodSampleTrend} color="#7C3AED" />
+          </div>
+          {/* Extra KPIs */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {prefs.kpi_outstanding && <KpiCard label="Outstanding" value={formatCurrency(outstanding)} sub="all unpaid + overdue" icon={AlertCircle} color="#dc2626" />}
+            {prefs.kpi_no_order && <KpiCard label={`No Order — ${format(new Date(), 'MMM yyyy')}`} value={noOrderThisMonth.length} sub={`of ${activePartners} active partners`} icon={AlertCircle} color="#f59e0b" />}
+            {prefs.kpi_pouches && <KpiCard label="Retail Pouches Sold" value={totalPouchesSold} sub="50g pouches · CRM orders" icon={ShoppingBag} color="#7C5C2E" />}
+            {prefs.kpi_kits && <KpiCard label="Starter Kits Sold" value={totalStarterKitsSold} sub="kits · CRM orders" icon={Package} color="#B45309" />}
+          </div>
+        </>
       )}
 
       {/* ── Daily Revenue + Conversion ── */}
@@ -1138,7 +1226,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {prefs.chart && (
             <div className="card p-5 lg:col-span-2">
-              <SectionHeader title="Monthly KPI" sub="Revenue (£) + samples sent per month" navigate={navigate} />
+              <SectionHeader title="Revenue Chart" sub={{ day: 'Last 7 days', week: 'Last 8 weeks', month: 'Since Jun 2026', year: `${now.getFullYear()} by month` }[period]} navigate={navigate} />
               <div className="h-52">
                 <Bar data={chartData} options={chartOptions} plugins={[kgLabelPlugin]} />
               </div>
@@ -1333,33 +1421,76 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Recent Samples Sent ── */}
+      {/* ── Sample Pipeline ── */}
       {prefs.samples && recentSamples.length > 0 && (
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Recent Samples Sent</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{convertedFromSample} of {samplesSentAllTime} converted ({conversionRate}%)</p>
+        <div className="card overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Sample Pipeline</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{samplesSentThisMonth} sent this month · {convertedFromSample} of {samplesSentAllTime} converted ({conversionRate}%)</p>
+              </div>
+              <button onClick={() => navigate('/partners?filter=sample_sent')} className="flex items-center gap-1 text-xs text-[#3D6034] hover:underline">
+                View all <ChevronRight size={12} />
+              </button>
             </div>
-            <span className="text-xs text-[#7C3AED] font-medium bg-purple-50 px-2.5 py-1 rounded-full">{samplesSentThisMonth} this month</span>
+            {/* Summary pills */}
+            <div className="flex gap-2 mt-3">
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">{samplesSentAllTime - convertedFromSample} awaiting</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">{convertedFromSample} converted</span>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{conversionRate}% rate</span>
+            </div>
           </div>
-          <div className="space-y-2">
-            {recentSamples.map(p => {
-              const hasOrdered = (Number(p.total_orders) || 0) > 0 || crmPartnerIdsSet.has(p.id)
-              return (
-                <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 cursor-pointer hover:bg-gray-50/50 rounded-lg px-2 -mx-2" onClick={() => navigate(`/partners/${p.id}`)}>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-400">Sampled {formatDate(p.sample_sent_at)}</p>
-                  </div>
-                  {hasOrdered
-                    ? <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Converted ✓</span>
-                    : <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Awaiting</span>
-                  }
-                </div>
-              )
-            })}
-          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['Partner', 'Sampled', 'Days Since', 'Status', ''].map(h => (
+                  <th key={h} className="text-left text-xs font-medium text-gray-400 px-5 py-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {recentSamples.map(p => {
+                const hasOrdered = (Number(p.total_orders) || 0) > 0 || crmPartnerIdsSet.has(p.id)
+                const daysSince = p.sample_sent_at ? Math.floor((new Date() - new Date(p.sample_sent_at)) / 86400000) : null
+                return (
+                  <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 cursor-pointer" onClick={() => navigate(`/partners/${p.id}`)}>
+                    <td className="px-5 py-3">
+                      <p className="text-sm font-medium text-gray-900">{p.name}</p>
+                      {p.contact_name && <p className="text-xs text-gray-400 mt-0.5">{p.contact_name}</p>}
+                    </td>
+                    <td className="px-5 py-3 text-sm text-gray-500">{formatDate(p.sample_sent_at)}</td>
+                    <td className="px-5 py-3">
+                      {daysSince != null && (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          hasOrdered ? 'bg-gray-100 text-gray-500' :
+                          daysSince > 30 ? 'bg-red-50 text-red-600' :
+                          daysSince > 14 ? 'bg-amber-50 text-amber-600' :
+                          'bg-purple-50 text-purple-600'
+                        }`}>{daysSince}d ago</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {hasOrdered
+                        ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">✓ Converted</span>
+                        : <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full">Awaiting</span>
+                      }
+                    </td>
+                    <td className="px-5 py-3">
+                      {!hasOrdered && (
+                        <button
+                          onClick={e => { e.stopPropagation(); navigate('/invoice', { state: { partnerId: p.id } }) }}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-[#EEF3EC] text-[#3D6034] hover:bg-[#d8e8d4] font-medium whitespace-nowrap"
+                        >
+                          + Invoice
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

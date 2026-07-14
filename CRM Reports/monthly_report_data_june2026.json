@@ -1,0 +1,64 @@
+{
+  "month_label": "June 2026",
+  "compare_label": "May 2026",
+  "subtitle": "Second reporting period — compared against May 2026 (baseline)",
+  "headline": [
+    ["Total B2B revenue", "£15,500", "£21,042", "+£5,542", "+36%", true],
+    ["Volume sold", "130 kg", "150.5 kg", "+20.5 kg", "+16%", true],
+    ["Total orders", "60", "73", "+13", "+22%", true],
+    ["Active café accounts", "36", "56", "+20", "+56%", true],
+    ["New accounts onboarded", "7", "14", "+7", "+100%", true]
+  ],
+  "headline_footnote": "Revenue grew 36% on 16% more volume — driven mainly by breadth: 20 more active cafés and double the new-account intake.",
+  "derived": [
+    ["Average order value (AOV)", "£258", "£288", "+£30", "+12%", true],
+    ["Average selling price / kg", "£119", "£140", "+£21", "+17%", true],
+    ["Average volume / order", "2.17 kg", "2.06 kg", "−0.11 kg", "−5%", false],
+    ["Orders per active café", "1.67", "1.30", "−0.37", "−22%", false],
+    ["Revenue per active café", "£431", "£376", "−£55", "−13%", false],
+    ["New-account share of active base", "19.4%", "25.0%", "+5.6 pts", "—", true],
+    ["Est. returning / reactivated accounts", "~29", "~42", "+13", "+45%", true]
+  ],
+  "derived_footnote": "* Assumption: new accounts are counted within active cafés and each placed ~1 order. June's 56 active exceeds May's 36 + 14 new (50) — at least 6 dormant accounts likely reactivated.",
+  "performance_statement": "June's headline is strong: revenue grew 36% to £21,042 on 150.5kg, 73 orders and 56 active cafés, with 14 new accounts onboarded — double May's intake. But the growth was led by breadth, not depth: the active base grew 56% while revenue grew 36%, so revenue per café fell 13% and orders per café fell 22%. At the same time, realised price per kg rose 17% and AOV rose 12% — when cafés order, they order higher-value. The open question: is the drop in order frequency healthy dilution from a big onboarding month, or early softening in the existing base? We can't yet tell without account-level order tracking — paired with the continued absence of margin data, that's the gap to close before July.",
+  "net_summary": "a strong, encouraging month with genuine positives — revenue, pricing power, and a widening returning base — alongside one metric to watch closely: per-account order frequency.",
+  "insights": [
+    { "tone": "up", "title": "Strong, breadth-led month", "body": "Revenue rose 36% to £21,042, but the active base grew faster (+56%). More cafés buying, not each café buying more." },
+    { "tone": "up", "title": "Pricing power showed up (+17%/kg)", "body": "Revenue grew more than twice as fast as volume — the gap is price/mix. Confirm the cause before banking on it." },
+    { "tone": "down", "title": "Order frequency softened (−22%)", "body": "Partly dilution from doubling onboards, but the returning base still appears to have slowed. Timing or real softening — can't yet tell." },
+    { "tone": "users", "title": "The base is widening", "body": "Returning/reactivated accounts grew ~29 → ~42 (+45%), partly offsetting the frequency dip." },
+    { "tone": "warn", "title": "Two things still invisible", "body": "No margin data (is £21k more profitable than May's £15.5k?) and no account-level order history. Closing these is the highest-value move for July." }
+  ],
+  "kpi_dashboard_note": "Trend view across our first two months. TBC rows unlock once July's data-capture items are in place.",
+  "kpi_dashboard": [
+    ["Revenue", "£15,500", "£21,042", "+36%", "growing fast", true],
+    ["Volume (kg)", "130", "150.5", "+16%", "up", true],
+    ["Active accounts", "36", "56", "+56%", "up strongly", true],
+    ["New accounts", "7", "14", "+100%", "doubled", true],
+    ["AOV", "£258", "£288", "+12%", "up", true],
+    ["Avg price / kg", "£119", "£140", "+17%", "up — check mix", true],
+    ["Orders / active café", "1.67", "1.30", "−22%", "watch closely", false],
+    ["Revenue / active café", "£431", "£376", "−13%", "watch", false],
+    ["Gross margin %", "TBC", "TBC", "—", "still not tracked", null],
+    ["Repeat / reorder rate", "TBC", "TBC", "—", "still not tracked", null],
+    ["Account churn", "n/a", "TBC", "—", "need data", null]
+  ],
+  "data_gaps": [
+    ["Cost per kg (COGS) + fulfilment cost", "Confirms whether £21k is profitable", "1 — Critical"],
+    ["Order history tagged by account", "Reorder rate, churn, growth quality", "2 — Critical"],
+    ["New vs returning revenue split", "How much of +36% came from new vs existing", "3 — High"]
+  ],
+  "definitions": [
+    ["Revenue", "Net of VAT/refunds; counted on order date within the calendar month."],
+    ["Active account", "A café that placed ≥1 paid order in the month."],
+    ["Onboarded / new account", "First-ever paid order fell in this month."],
+    ["Volume", "Total kg of matcha shipped/invoiced in the month."]
+  ],
+  "recommendations_intro": "Grounded in this month's numbers — not generic advice.",
+  "recommendations": [
+    { "title": "Convert the sample backlog first", "body": "80 cafés currently sit at 'sample sent' vs 71 active — a bigger pool than the entire active base. A simple 2-3 week follow-up after each sample (call or WhatsApp) is likely the cheapest lever available for new-account growth right now." },
+    { "title": "Protect reorder frequency", "body": "Orders per active café fell 22% this month. A lightweight reorder reminder timed to each café's typical cycle (e.g. 3-4 weeks after last order) could arrest the slide before it becomes a trend." },
+    { "title": "Close the margin gap before scaling further", "body": "We can't yet confirm whether June's £21k is more profitable than May's £15.5k. Capture cost-per-kg and fulfilment cost next — it's the single highest-value data investment on the table." },
+    { "title": "Lean into the pricing signal", "body": "Realised price/kg rose 17% this month. Worth testing whether that holds for new accounts too, or introducing a premium SKU — early evidence suggests cafés will pay for quality." }
+  ]
+}
