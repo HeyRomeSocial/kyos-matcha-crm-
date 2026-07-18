@@ -2,9 +2,9 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { syncToSheets } from '../lib/sheetsSync'
-import { formatCurrency, formatDate, getOrderStatus } from '../lib/utils'
+import { formatCurrency, formatDate, getOrderStatus, lineItemKg } from '../lib/utils'
 import { restoreInventoryForOrder } from '../lib/inventory'
-import { format, addDays } from 'date-fns'
+import { format, addDays, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
@@ -232,6 +232,7 @@ export default function OrdersLog() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [monthFilter, setMonthFilter] = useState('all')
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [editOrder, setEditOrder] = useState(null)
   const [viewOrder, setViewOrder] = useState(null)
@@ -323,6 +324,16 @@ export default function OrdersLog() {
     setConfirmDelete(null)
   }
 
+  // Build month options from orders (last 24 months)
+  const monthOptions = useMemo(() => {
+    const now = new Date()
+    return Array.from({ length: 24 }, (_, i) => {
+      const d = subMonths(new Date(now.getFullYear(), now.getMonth(), 1), i)
+      const key = format(d, 'yyyy-MM')
+      return { key, label: format(d, 'MMMM yyyy') }
+    })
+  }, [])
+
   const filtered = useMemo(() => {
     return orders
       .filter(o => {
@@ -331,7 +342,8 @@ export default function OrdersLog() {
         const matchSearch = !search
           || o.invoice_number?.toLowerCase().includes(search.toLowerCase())
           || o.partner_name?.toLowerCase().includes(search.toLowerCase())
-        return matchFilter && matchSearch
+        const matchMonth = monthFilter === 'all' || (o.date && o.date.slice(0, 7) === monthFilter)
+        return matchFilter && matchSearch && matchMonth
       })
       .sort((a, b) => {
         let av, bv
@@ -421,6 +433,17 @@ export default function OrdersLog() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+        {/* Month picker */}
+        <select
+          className="input text-xs py-1.5 w-44"
+          value={monthFilter}
+          onChange={e => setMonthFilter(e.target.value)}
+        >
+          <option value="all">All time</option>
+          {monthOptions.map(m => (
+            <option key={m.key} value={m.key}>{m.label}</option>
+          ))}
+        </select>
         <div className="flex items-center gap-1">
           {FILTERS.map(f => (
             <button
@@ -437,6 +460,29 @@ export default function OrdersLog() {
           ))}
         </div>
       </div>
+
+      {/* Period summary */}
+      {(() => {
+        const totalRev = filtered.reduce((s, o) => s + (Number(o.total) || 0), 0)
+        const paidRev  = filtered.filter(o => getOrderStatus(o) === 'paid').reduce((s, o) => s + (Number(o.total) || 0), 0)
+        const totalKg  = filtered.reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
+        const uniqueCafes = new Set(filtered.map(o => o.partner_id).filter(Boolean)).size
+        return (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100 rounded-2xl overflow-hidden border border-gray-100">
+            {[
+              { label: 'Invoices', value: filtered.length },
+              { label: 'Revenue', value: formatCurrency(totalRev) },
+              { label: 'Paid', value: formatCurrency(paidRev) },
+              { label: 'Matcha KG', value: `${totalKg.toFixed(1)} kg` },
+            ].map(item => (
+              <div key={item.label} className="bg-white px-5 py-3">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{item.label}</p>
+                <p className="text-lg font-bold text-gray-900 mt-0.5" style={{ fontVariantNumeric: 'tabular-nums' }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Table */}
       <div className="card overflow-hidden">
