@@ -1113,6 +1113,29 @@ export default function Dashboard() {
               >Today</button>
             )}
           </div>
+          {/* Quick jump dropdown — shows available options for the selected period */}
+          <select
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 focus:outline-none focus:ring-1 focus:ring-[#3D6034]"
+            value={periodOffset}
+            onChange={e => setPeriodOffset(Number(e.target.value))}
+          >
+            {period === 'month' && Array.from({ length: 24 }, (_, i) => {
+              const d = subMonths(new Date(now.getFullYear(), now.getMonth(), 1), i)
+              return <option key={i} value={i}>{format(d, 'MMMM yyyy')}</option>
+            })}
+            {period === 'week' && Array.from({ length: 26 }, (_, i) => {
+              const wS = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - i * 7)
+              const wE = new Date(wS.getFullYear(), wS.getMonth(), wS.getDate() + 6)
+              return <option key={i} value={i}>{i === 0 ? 'This week' : i === 1 ? 'Last week' : `${format(wS, 'd MMM')}–${format(wE, 'd MMM yyyy')}`}</option>
+            })}
+            {period === 'year' && Array.from({ length: 5 }, (_, i) => (
+              <option key={i} value={i}>{now.getFullYear() - i}</option>
+            ))}
+            {period === 'day' && Array.from({ length: 30 }, (_, i) => {
+              const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+              return <option key={i} value={i}>{i === 0 ? 'Today' : i === 1 ? 'Yesterday' : format(d, 'EEE d MMM')}</option>
+            })}
+          </select>
         </div>
         <div className="flex items-center gap-2">
           <button
