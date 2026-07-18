@@ -371,13 +371,18 @@ export default function OrdersLog() {
         if (av > bv) return sortDir === 'asc' ? 1 : -1
         return 0
       })
-  }, [orders, filter, search, sortKey, sortDir])
+  }, [orders, filter, search, sortKey, sortDir, monthFilter])
+
+  // Month-scoped base (for counts — respects month filter but not status filter)
+  const monthScoped = useMemo(() =>
+    monthFilter === 'all' ? orders : orders.filter(o => o.date && o.date.slice(0, 7) === monthFilter)
+  , [orders, monthFilter])
 
   const counts = {
-    all: orders.length,
-    paid: orders.filter(o => getOrderStatus(o) === 'paid').length,
-    unpaid: orders.filter(o => getOrderStatus(o) === 'unpaid').length,
-    overdue: orders.filter(o => getOrderStatus(o) === 'overdue').length,
+    all: monthScoped.length,
+    paid: monthScoped.filter(o => getOrderStatus(o) === 'paid').length,
+    unpaid: monthScoped.filter(o => getOrderStatus(o) === 'unpaid').length,
+    overdue: monthScoped.filter(o => getOrderStatus(o) === 'overdue').length,
   }
 
   // Recently paid — last 5 invoices with a paid_at timestamp, most recent first
