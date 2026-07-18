@@ -608,6 +608,7 @@ export default function Dashboard() {
   const [showNoOrderModal, setShowNoOrderModal] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [period, setPeriod] = useState('week')
+  const [periodOffset, setPeriodOffset] = useState(0) // 0 = current, 1 = one back, etc.
   const [showAllTime, setShowAllTime] = useState(true)
 
   async function handleSyncNow() {
@@ -697,19 +698,6 @@ export default function Dashboard() {
     , 0)
   , 0)
 
-  // KG trend — CRM kg this month vs last month
-  const kgThisMonth = orders
-    .filter(o => o.date >= format(startOfMonth(new Date()), 'yyyy-MM-dd'))
-    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
-  const kgLastMonth = orders
-    .filter(o => {
-      const lmStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
-      const lmEnd = format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
-      return o.date >= lmStart && o.date <= lmEnd
-    })
-    .reduce((s, o) => s + (o.line_items || []).reduce((a, li) => a + lineItemKg(li), 0), 0)
-  const kgTrend = kgLastMonth > 0 ? ((kgThisMonth - kgLastMonth) / kgLastMonth) * 100 : null
-
   // Conversion: partners who have placed at least one order (historical or CRM)
   const crmPartnerIdsSet = new Set(orders.map(o => o.partner_id).filter(Boolean))
   const orderingPartners = partners.filter(p =>
@@ -746,66 +734,72 @@ export default function Dashboard() {
     .filter(o => getOrderStatus(o) === 'paid')
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // Month-on-month revenue trend
-  const thisMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  const thisMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd')
-  const lastMonthStart = format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
-  const lastMonthEnd = format(endOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd')
-  const thisMonthRev = orders.filter(o => o.date >= thisMonthStart && o.date <= thisMonthEnd).reduce((s, o) => s + (o.total || 0), 0)
-  const lastMonthRev = orders.filter(o => o.date >= lastMonthStart && o.date <= lastMonthEnd).reduce((s, o) => s + (o.total || 0), 0)
-  const revTrend = lastMonthRev > 0 ? ((thisMonthRev - lastMonthRev) / lastMonthRev) * 100 : null
+  // Convenience refs for widgets that always show current-month context (goals, daily chart, no-order list)
+  const _now = new Date()
+  const lastMonthStart = format(startOfMonth(subMonths(_now, 1)), 'yyyy-MM-dd')
+  const lastMonthEnd = format(endOfMonth(subMonths(_now, 1)), 'yyyy-MM-dd')
 
-  // Revenue MTD (paid only, incl. shipping)
-  const revMTD = orders
-    .filter(o => o.status === 'paid' && o.date >= thisMonthStart && o.date <= thisMonthEnd)
-    .reduce((s, o) => s + (Number(o.total) || 0), 0)
-  const revMTDLastMonth = orders
-    .filter(o => o.status === 'paid' && o.date >= lastMonthStart && o.date <= lastMonthEnd)
-    .reduce((s, o) => s + (Number(o.total) || 0), 0)
-  const revMTDTrend = revMTDLastMonth > 0 ? ((revMTD - revMTDLastMonth) / revMTDLastMonth) * 100 : null
-
-  // KG this month
+  // KG helper (used below and in chart)
   const sumKg = (list) => list.reduce((s, o) => s + (o.line_items || []).reduce((t, li) => t + lineItemKg(li), 0), 0)
-  const kgMTD = sumKg(orders.filter(o => o.date >= thisMonthStart && o.date <= thisMonthEnd))
-  const kgPrevMonth = sumKg(orders.filter(o => o.date >= lastMonthStart && o.date <= lastMonthEnd))
-  const kgMTDTrend = kgPrevMonth > 0 ? ((kgMTD - kgPrevMonth) / kgPrevMonth) * 100 : null
 
-  // Revenue YTD (paid only, incl. shipping)
+  // Revenue YTD (paid only)
   const revYTD = orders
-    .filter(o => o.status === 'paid' && o.date >= `${new Date().getFullYear()}-01-01`)
+    .filter(o => o.status === 'paid' && o.date >= `${_now.getFullYear()}-01-01`)
     .reduce((s, o) => s + (Number(o.total) || 0), 0)
 
-  // ── Period date ranges ──
+  // ── Period date ranges (offset-aware) ──
   const now = new Date()
-  const todayStr = format(now, 'yyyy-MM-dd')
-  // Week: Mon–Sun
   const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1
-  const weekStart = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek), 'yyyy-MM-dd')
-  const weekEnd   = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek + 6), 'yyyy-MM-dd')
-  // Previous week
-  const prevWeekStart = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - 7), 'yyyy-MM-dd')
-  const prevWeekEnd   = format(new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - 1), 'yyyy-MM-dd')
-  // Year
-  const yearStart = `${now.getFullYear()}-01-01`
-  const yearEnd   = `${now.getFullYear()}-12-31`
-  const prevYearStart = `${now.getFullYear() - 1}-01-01`
-  const prevYearEnd   = `${now.getFullYear() - 1}-12-31`
 
-  function periodRange(p) {
-    if (p === 'day')   return { start: todayStr, end: todayStr }
-    if (p === 'week')  return { start: weekStart, end: weekEnd }
-    if (p === 'month') return { start: thisMonthStart, end: thisMonthEnd }
-    return { start: yearStart, end: yearEnd }
-  }
-  function prevPeriodRange(p) {
-    if (p === 'day')   return { start: format(subMonths(now, 0), 'yyyy-MM-dd').replace(/\d{2}$/, String(now.getDate() - 1).padStart(2,'0')), end: format(new Date(now.getTime() - 86400000), 'yyyy-MM-dd') }
-    if (p === 'week')  return { start: prevWeekStart, end: prevWeekEnd }
-    if (p === 'month') return { start: lastMonthStart, end: lastMonthEnd }
-    return { start: prevYearStart, end: prevYearEnd }
+  function getPeriodRange(p, offset) {
+    if (p === 'day') {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)
+      const ds = format(d, 'yyyy-MM-dd')
+      return { start: ds, end: ds }
+    }
+    if (p === 'week') {
+      const wS = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - offset * 7)
+      const wE = new Date(wS.getFullYear(), wS.getMonth(), wS.getDate() + 6)
+      return { start: format(wS, 'yyyy-MM-dd'), end: format(wE, 'yyyy-MM-dd') }
+    }
+    if (p === 'month') {
+      const d = subMonths(new Date(now.getFullYear(), now.getMonth(), 1), offset)
+      return { start: format(startOfMonth(d), 'yyyy-MM-dd'), end: format(endOfMonth(d), 'yyyy-MM-dd') }
+    }
+    // year
+    const yr = now.getFullYear() - offset
+    return { start: `${yr}-01-01`, end: `${yr}-12-31` }
   }
 
-  const pRange  = periodRange(period)
-  const ppRange = prevPeriodRange(period)
+  function getPeriodLabel(p, offset) {
+    if (p === 'day') {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset)
+      if (offset === 0) return `Today — ${format(d, 'd MMM yyyy')}`
+      if (offset === 1) return `Yesterday — ${format(d, 'd MMM yyyy')}`
+      return format(d, 'EEEE, d MMM yyyy')
+    }
+    if (p === 'week') {
+      const wS = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek - offset * 7)
+      const wE = new Date(wS.getFullYear(), wS.getMonth(), wS.getDate() + 6)
+      const label = offset === 0 ? 'This Week' : offset === 1 ? 'Last Week' : `${offset} Weeks Ago`
+      return `${label} — ${format(wS, 'd MMM')}–${format(wE, 'd MMM yyyy')}`
+    }
+    if (p === 'month') {
+      const d = subMonths(new Date(now.getFullYear(), now.getMonth(), 1), offset)
+      const label = offset === 0 ? 'This Month' : offset === 1 ? 'Last Month' : format(d, 'MMMM yyyy')
+      return `${label} — ${format(d, 'MMMM yyyy')}`
+    }
+    const yr = now.getFullYear() - offset
+    return offset === 0 ? `This Year — ${yr}` : `${yr}`
+  }
+
+  const todayStr = format(now, 'yyyy-MM-dd')
+  const thisMonthStart = format(startOfMonth(now), 'yyyy-MM-dd')
+  const thisMonthEnd = format(endOfMonth(now), 'yyyy-MM-dd')
+
+  const pRange  = getPeriodRange(period, periodOffset)
+  const ppRange = getPeriodRange(period, periodOffset + 1)
+  const periodLabel = getPeriodLabel(period, periodOffset)
 
   const periodOrders     = orders.filter(o => o.date >= pRange.start && o.date <= pRange.end)
   const prevPeriodOrders = orders.filter(o => o.date >= ppRange.start && o.date <= ppRange.end)
@@ -838,13 +832,6 @@ export default function Dashboard() {
   const periodSamples     = partners.filter(p => p.sample_sent_at && p.sample_sent_at >= pRange.start && p.sample_sent_at <= pRange.end).length
   const prevPeriodSamples = partners.filter(p => p.sample_sent_at && p.sample_sent_at >= ppRange.start && p.sample_sent_at <= ppRange.end).length
   const periodSampleTrend = prevPeriodSamples > 0 ? ((periodSamples - prevPeriodSamples) / prevPeriodSamples) * 100 : null
-
-  const periodLabel = {
-    day:   `Today — ${format(now, 'd MMM yyyy')}`,
-    week:  `This Week — ${format(new Date(weekStart), 'd MMM')}–${format(new Date(weekEnd), 'd MMM yyyy')}`,
-    month: `This Month — ${format(now, 'MMMM yyyy')}`,
-    year:  `This Year — ${now.getFullYear()}`,
-  }[period]
 
   // ── Chart — period-aware ──
   function buildChartSlices() {
@@ -1092,18 +1079,40 @@ export default function Dashboard() {
 
       {/* ── Top bar: period toggle + actions ── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-          {['day','week','month','year'].map(p => (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            {['day','week','month','year'].map(p => (
+              <button
+                key={p}
+                onClick={() => { setPeriod(p); setPeriodOffset(0) }}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
+                  period === p ? 'bg-white text-[#3D6034] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          {/* Prev / Next navigation */}
+          <div className="flex items-center gap-1">
             <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${
-                period === p ? 'bg-white text-[#3D6034] shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+              onClick={() => setPeriodOffset(o => o + 1)}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 text-sm"
+              title="Previous period"
+            >‹</button>
+            <button
+              onClick={() => setPeriodOffset(o => Math.max(0, o - 1))}
+              disabled={periodOffset === 0}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed text-sm"
+              title="Next period"
+            >›</button>
+            {periodOffset > 0 && (
+              <button
+                onClick={() => setPeriodOffset(0)}
+                className="px-2 py-1 text-[10px] font-semibold rounded-lg bg-[#EEF3EC] text-[#3D6034] hover:bg-[#d8e8d4]"
+              >Today</button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
