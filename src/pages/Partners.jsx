@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, reorderUrgency } from '../lib/utils'
 import PartnerModal from '../components/PartnerModal'
-import { Plus, Search, Pencil, ExternalLink, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { Plus, Search, Pencil, ExternalLink, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Mail, Copy, Download, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUSES = ['all', 'prospect', 'sample_sent', 'active', 'inactive']
@@ -54,6 +54,7 @@ export default function Partners() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [sortKey, setSortKey] = useState('name')
   const [sortDir, setSortDir] = useState('asc')
+  const [showEmailModal, setShowEmailModal] = useState(false)
 
   function handleSort(key) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -190,9 +191,14 @@ export default function Partners() {
           <h1 className="text-xl font-bold text-gray-900">Partners</h1>
           <p className="text-sm text-gray-500 mt-0.5">{partners.length} partners total</p>
         </div>
-        <button onClick={() => setModal('add')} className="btn-primary">
-          <Plus size={16} /> Add Partner
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowEmailModal(true)} className="btn-secondary">
+            <Mail size={15} /> Email List
+          </button>
+          <button onClick={() => setModal('add')} className="btn-primary">
+            <Plus size={16} /> Add Partner
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -325,6 +331,97 @@ export default function Partners() {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
+
+      {showEmailModal && (() => {
+        const withEmail = partners.filter(p => p.email)
+        const emailsOnly = withEmail.map(p => p.email).join(', ')
+        const csvContent = 'Name,Email,Status\n' + withEmail.map(p =>
+          `"${p.name}","${p.email}","${p.status}"`
+        ).join('\n')
+
+        function copyAll() {
+          navigator.clipboard.writeText(emailsOnly)
+          toast.success(`${withEmail.length} emails copied`)
+        }
+
+        function downloadCsv() {
+          const blob = new Blob([csvContent], { type: 'text/csv' })
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(blob)
+          a.download = 'kyos-partner-emails.csv'
+          a.click()
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Partner Email List</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{withEmail.length} of {partners.length} partners have an email</p>
+                </div>
+                <button onClick={() => setShowEmailModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-4 flex gap-2">
+                <button onClick={copyAll} className="flex-1 inline-flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg bg-[#3D6034] text-white hover:bg-[#2E4A27]">
+                  <Copy size={13} /> Copy All Emails
+                </button>
+                <button onClick={downloadCsv} className="flex-1 inline-flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                  <Download size={13} /> Download CSV
+                </button>
+              </div>
+
+              <div className="px-4 pb-2">
+                <textarea
+                  readOnly
+                  className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono"
+                  rows={4}
+                  value={emailsOnly}
+                  onClick={e => e.target.select()}
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Click the box to select all · paste directly into Gmail BCC or Mailchimp</p>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-4 pb-4">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left text-xs font-medium text-gray-400 py-2">Cafe</th>
+                      <th className="text-left text-xs font-medium text-gray-400 py-2">Email</th>
+                      <th className="text-left text-xs font-medium text-gray-400 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withEmail.map(p => (
+                      <tr key={p.id} className="border-b border-gray-50 last:border-0">
+                        <td className="py-2 text-xs font-medium text-gray-800 pr-3">{p.name}</td>
+                        <td className="py-2 text-xs text-gray-500">{p.email}</td>
+                        <td className="py-2">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            p.status === 'active' ? 'bg-[#EEF3EC] text-[#3D6034]' :
+                            p.status === 'sample_sent' ? 'bg-purple-100 text-purple-700' :
+                            'bg-gray-100 text-gray-500'
+                          }`}>{p.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {partners.filter(p => !p.email).map(p => (
+                      <tr key={p.id} className="border-b border-gray-50 last:border-0 opacity-40">
+                        <td className="py-2 text-xs font-medium text-gray-800 pr-3">{p.name}</td>
+                        <td className="py-2 text-xs text-gray-400 italic">no email</td>
+                        <td />
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
