@@ -333,8 +333,10 @@ export default function Partners() {
       )}
 
       {showEmailModal && (() => {
+        const activeNoEmail = partners.filter(p => p.status === 'active' && !p.email)
         const withEmail = partners.filter(p => p.email)
         const emailsOnly = withEmail.map(p => p.email).join(', ')
+        const activeEmails = partners.filter(p => p.status === 'active' && p.email)
         const csvContent = 'Name,Email,Status\n' + withEmail.map(p =>
           `"${p.name}","${p.email}","${p.status}"`
         ).join('\n')
@@ -343,7 +345,10 @@ export default function Partners() {
           navigator.clipboard.writeText(emailsOnly)
           toast.success(`${withEmail.length} emails copied`)
         }
-
+        function copyActive() {
+          navigator.clipboard.writeText(activeEmails.map(p => p.email).join(', '))
+          toast.success(`${activeEmails.length} active partner emails copied`)
+        }
         function downloadCsv() {
           const blob = new Blob([csvContent], { type: 'text/csv' })
           const a = document.createElement('a')
@@ -354,23 +359,35 @@ export default function Partners() {
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '80vh' }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{ maxHeight: '85vh' }}>
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <div>
                   <h2 className="text-sm font-semibold text-gray-900">Partner Email List</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{withEmail.length} of {partners.length} partners have an email</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{withEmail.length} of {partners.length} partners have an email saved</p>
                 </div>
                 <button onClick={() => setShowEmailModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100">
                   <X size={16} />
                 </button>
               </div>
 
+              {/* Missing emails alert */}
+              {activeNoEmail.length > 0 && (
+                <div className="mx-4 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-xs font-semibold text-amber-700">⚠ {activeNoEmail.length} active partners missing an email:</p>
+                  <p className="text-xs text-amber-600 mt-1">{activeNoEmail.map(p => p.name).join(', ')}</p>
+                  <p className="text-[10px] text-amber-500 mt-1">Go to their partner profile to add an email address.</p>
+                </div>
+              )}
+
               <div className="p-4 flex gap-2">
-                <button onClick={copyAll} className="flex-1 inline-flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg bg-[#3D6034] text-white hover:bg-[#2E4A27]">
-                  <Copy size={13} /> Copy All Emails
+                <button onClick={copyActive} className="flex-1 inline-flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg bg-[#3D6034] text-white hover:bg-[#2E4A27]">
+                  <Copy size={13} /> Copy Active ({activeEmails.length})
                 </button>
-                <button onClick={downloadCsv} className="flex-1 inline-flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
-                  <Download size={13} /> Download CSV
+                <button onClick={copyAll} className="flex-1 inline-flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                  <Copy size={13} /> Copy All ({withEmail.length})
+                </button>
+                <button onClick={downloadCsv} className="inline-flex items-center justify-center gap-1 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                  <Download size={13} />
                 </button>
               </div>
 
@@ -378,16 +395,16 @@ export default function Partners() {
                 <textarea
                   readOnly
                   className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono"
-                  rows={4}
+                  rows={3}
                   value={emailsOnly}
                   onClick={e => e.target.select()}
                 />
-                <p className="text-[10px] text-gray-400 mt-1">Click the box to select all · paste directly into Gmail BCC or Mailchimp</p>
+                <p className="text-[10px] text-gray-400 mt-1">Click the box to select all · paste into Gmail BCC or Mailchimp</p>
               </div>
 
               <div className="overflow-y-auto flex-1 px-4 pb-4">
                 <table className="w-full">
-                  <thead>
+                  <thead className="sticky top-0 bg-white">
                     <tr className="border-b border-gray-100">
                       <th className="text-left text-xs font-medium text-gray-400 py-2">Cafe</th>
                       <th className="text-left text-xs font-medium text-gray-400 py-2">Email</th>
@@ -395,7 +412,7 @@ export default function Partners() {
                     </tr>
                   </thead>
                   <tbody>
-                    {withEmail.map(p => (
+                    {withEmail.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
                       <tr key={p.id} className="border-b border-gray-50 last:border-0">
                         <td className="py-2 text-xs font-medium text-gray-800 pr-3">{p.name}</td>
                         <td className="py-2 text-xs text-gray-500">{p.email}</td>
@@ -408,11 +425,11 @@ export default function Partners() {
                         </td>
                       </tr>
                     ))}
-                    {partners.filter(p => !p.email).map(p => (
-                      <tr key={p.id} className="border-b border-gray-50 last:border-0 opacity-40">
-                        <td className="py-2 text-xs font-medium text-gray-800 pr-3">{p.name}</td>
-                        <td className="py-2 text-xs text-gray-400 italic">no email</td>
-                        <td />
+                    {activeNoEmail.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                      <tr key={p.id} className="border-b border-gray-50 last:border-0 bg-amber-50/40">
+                        <td className="py-2 text-xs font-medium text-gray-700 pr-3">{p.name}</td>
+                        <td className="py-2 text-xs text-amber-500 italic">no email — add in profile</td>
+                        <td className="py-2"><span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[#EEF3EC] text-[#3D6034]">active</span></td>
                       </tr>
                     ))}
                   </tbody>
