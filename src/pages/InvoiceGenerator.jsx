@@ -409,7 +409,7 @@ kyosmatcha.com`
           <div className="space-y-2">
             {lineItems.map(item => (
               <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                {['Premium Matcha A', 'Premium Matcha AAA', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit'].includes(item.desc) || item.desc === '' ? (
+                {['Premium Matcha A', 'Premium Matcha AAA', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit', 'Retail Shelf (Free of Charge)'].includes(item.desc) || item.desc === '' ? (
                   <select
                     className="input col-span-5 text-xs"
                     value={item.desc}
@@ -421,6 +421,7 @@ kyosmatcha.com`
                     <option value="Royal Mail Shipping Fee">Royal Mail Shipping Fee</option>
                     <option value="Retail Pouch 50g">Retail Pouch 50g</option>
                     <option value="Starter Kit">Starter Kit</option>
+                    <option value="Retail Shelf (Free of Charge)">Retail Shelf (Free of Charge)</option>
                     <option value="__other__">Other…</option>
                   </select>
                 ) : (
@@ -439,17 +440,23 @@ kyosmatcha.com`
                   onChange={e => updateItem(item.id, 'qty', e.target.value)}
                   min="0"
                 />
-                <input
-                  type="number"
-                  step="0.01"
-                  className="input col-span-3 text-xs"
-                  placeholder="Price"
-                  value={item.price}
-                  onChange={e => updateItem(item.id, 'price', e.target.value)}
-                  min="0"
-                />
+                {item.desc === 'Retail Shelf (Free of Charge)' ? (
+                  <div className="col-span-3 input text-xs text-center text-[#3D6034] font-semibold bg-[#EEF3EC] border-[#3D6034]/20 flex items-center justify-center">
+                    Free
+                  </div>
+                ) : (
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="input col-span-3 text-xs"
+                    placeholder="Price"
+                    value={item.price}
+                    onChange={e => updateItem(item.id, 'price', e.target.value)}
+                    min="0"
+                  />
+                )}
                 <div className="col-span-1 text-xs text-gray-500 text-right">
-                  {formatCurrency(item.qty * item.price)}
+                  {item.desc === 'Retail Shelf (Free of Charge)' ? <span className="text-[#3D6034] font-medium">FOC</span> : formatCurrency(item.qty * item.price)}
                 </div>
                 <button
                   onClick={() => removeItem(item.id)}
@@ -478,6 +485,12 @@ kyosmatcha.com`
               className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
             >
               + Starter Kit
+            </button>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('Retail Shelf (Free of Charge)', 1, 0)])}
+              className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Retail Shelf (FOC)
             </button>
           </div>
 
@@ -647,9 +660,11 @@ const InvoicePreview = React.forwardRef(function InvoicePreview(
             <tr key={item.id || idx} style={{ borderBottom: '1px solid #f3f4f6', background: idx % 2 === 1 ? '#fafafa' : '#fff' }}>
               <td style={{ padding: '10px 12px' }}>{item.desc}</td>
               <td style={{ padding: '10px 12px', textAlign: 'right' }}>{item.qty}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right' }}>£{Number(item.price).toFixed(2)}</td>
-              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 500 }}>
-                £{(item.qty * item.price).toFixed(2)}
+              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                {item.desc === 'Retail Shelf (Free of Charge)' ? 'Free of Charge' : `£${Number(item.price).toFixed(2)}`}
+              </td>
+              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 500, color: item.desc === 'Retail Shelf (Free of Charge)' ? '#3D6034' : undefined }}>
+                {item.desc === 'Retail Shelf (Free of Charge)' ? 'FOC' : `£${(item.qty * item.price).toFixed(2)}`}
               </td>
             </tr>
           ))}
