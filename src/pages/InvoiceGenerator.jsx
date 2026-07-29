@@ -120,7 +120,7 @@ export default function InvoiceGenerator() {
   useEffect(() => {
     async function load() {
       const [{ data: p }, { data: existingOrders }, { data: s }] = await Promise.all([
-        supabase.from('partners').select('*').eq('status', 'active').order('name'),
+        supabase.from('partners').select('*').in('status', ['active', 'sample_sent']).order('name'),
         supabase.from('orders').select('invoice_number'),
         supabase.from('settings').select('*').eq('id', 1).single(),
       ])
@@ -287,19 +287,26 @@ kyosmatcha.com`
       const currentNum = parseInt(invoiceNumber.replace('KM-', ''))
       await supabase.from('invoice_sequence').update({ last_number: currentNum }).gt('last_number', 0)
 
-      // Update partner stats
+      // Update partner stats — also promote sample_sent → active on first invoice
       const newTotalOrders = (selectedPartner.total_orders || 0) + 1
       const matchaKg = lineItems.reduce((s, i) => s + lineItemKg(i), 0)
       const newTotalKg = (selectedPartner.total_kg || 0) + matchaKg
       const newTotalSpent = (selectedPartner.total_spent || 0) + total
       const newNextOrder = calcNextOrder(invoiceDate, selectedPartner.reorder_frequency_days)
-      await supabase.from('partners').update({
+      const partnerUpdate = {
         last_order_date: invoiceDate,
         total_orders: newTotalOrders,
         total_kg: newTotalKg,
         total_spent: newTotalSpent,
         next_expected_order: newNextOrder || selectedPartner.next_expected_order,
-      }).eq('id', selectedPartner.id)
+      }
+      if (selectedPartner.status === 'sample_sent') {
+        partnerUpdate.status = 'active'
+      }
+      await supabase.from('partners').update(partnerUpdate).eq('id', selectedPartner.id)
+      if (selectedPartner.status === 'sample_sent') {
+        toast.success(`${selectedPartner.name} promoted to Active! 🎉`, { duration: 4000 })
+      }
 
       setSavedPdfUrl(publicUrl)
       toast.success(`Invoice ${invoiceNumber} saved!`)

@@ -6,7 +6,7 @@ import { syncToSheets } from '../lib/sheetsSync'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
-const STATUS_OPTIONS = ['prospect', 'sample_sent', 'active', 'inactive']
+const STATUS_OPTIONS = ['prospect', 'sample_sent', 'active', 'inactive', 'not_interested']
 const FREQ_OPTIONS = [
   { label: 'Weekly (7 days)', value: 7 },
   { label: 'Fortnightly (14 days)', value: 14 },
@@ -52,6 +52,12 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
       const next = { ...f, [key]: val }
       if ((key === 'last_order_date' || key === 'reorder_frequency_days') && next.last_order_date && next.reorder_frequency_days) {
         next.next_expected_order = calcNextOrder(next.last_order_date, next.reorder_frequency_days) || next.next_expected_order
+      }
+      // Auto-set follow-up date 3 months from now when marked not interested
+      if (key === 'status' && val === 'not_interested' && !f.follow_up_date) {
+        const d = new Date()
+        d.setMonth(d.getMonth() + 3)
+        next.follow_up_date = format(d, 'yyyy-MM-dd')
       }
       return next
     })
@@ -131,9 +137,23 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
               <label className="label">Status</label>
               <select className="input" value={form.status} onChange={e => set('status', e.target.value)}>
                 {STATUS_OPTIONS.map(s => (
-                  <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+                  <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
                 ))}
               </select>
+              {form.status === 'not_interested' && (
+                <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs text-amber-700 font-medium">Follow-up reminder set</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-amber-600">Check back on:</p>
+                    <input
+                      type="date"
+                      className="text-xs border border-amber-200 rounded-md px-2 py-0.5 bg-white text-amber-700"
+                      value={form.follow_up_date || ''}
+                      onChange={e => set('follow_up_date', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="col-span-2">
               <label className="label">Matcha Product</label>
