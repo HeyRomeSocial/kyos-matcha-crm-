@@ -137,9 +137,16 @@ export default function InvoiceGenerator() {
       const maxUsed = usedNumbers.length > 0 ? Math.max(...usedNumbers) : 169
       setInvoiceNumber(`KM-${maxUsed + 1}`)
 
-      // Pre-select partner from navigation state
-      if (location.state?.partnerId && p) {
-        const partner = p.find(x => x.id === location.state.partnerId)
+      // Pre-select partner from navigation state — fetch directly if not in list (e.g. non-active status)
+      if (location.state?.partnerId) {
+        let partner = (p || []).find(x => x.id === location.state.partnerId)
+        if (!partner) {
+          const { data } = await supabase.from('partners').select('*').eq('id', location.state.partnerId).single()
+          if (data) {
+            partner = data
+            setPartners(prev => [...(prev || []), data])
+          }
+        }
         if (partner) selectPartner(partner)
       }
     }
