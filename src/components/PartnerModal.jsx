@@ -146,6 +146,20 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
                   <option key={s} value={s}>{s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
                 ))}
               </select>
+              {(form.status === 'sample_sent' || form.sample_sent_at) && (
+                <div className="mt-2 p-2.5 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-xs text-purple-700 font-medium">Sample sent date</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="date"
+                      className="text-xs border border-purple-200 rounded-md px-2 py-0.5 bg-white text-purple-700"
+                      value={form.sample_sent_at || ''}
+                      onChange={e => set('sample_sent_at', e.target.value)}
+                    />
+                    <span className="text-[10px] text-purple-500">Backdate if needed</span>
+                  </div>
+                </div>
+              )}
               {form.status === 'not_interested' && (
                 <div className="mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-700 font-medium">Follow-up reminder set</p>
