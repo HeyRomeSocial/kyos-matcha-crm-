@@ -26,6 +26,7 @@ function empty() {
     projected_kg_month: '', reorder_frequency_days: 14,
     last_order_date: '', next_expected_order: '', notes: '',
     preferred_sku: 'A',
+    joined_date: format(new Date(), 'yyyy-MM-dd'),
   }
 }
 
@@ -120,6 +121,11 @@ export default function PartnerModal({ partner, onClose, onSaved }) {
             <div className="col-span-2">
               <label className="label">Business Name *</label>
               <input className="input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Cafe Bloom" />
+            </div>
+            <div>
+              <label className="label">Date Added to CRM</label>
+              <input type="date" className="input" value={form.joined_date || ''} onChange={e => set('joined_date', e.target.value)} />
+              <p className="text-[10px] text-gray-400 mt-1">Backdate if added late</p>
             </div>
             <div>
               <label className="label">Contact Name</label>

@@ -124,7 +124,7 @@ export default function PartnerDetail() {
       {(() => {
         const firstOrder = orders.length > 0 ? [...orders].sort((a,b) => a.date.localeCompare(b.date))[0] : null
         const milestones = [
-          { icon: UserPlus, label: 'Added to CRM', date: partner.created_at ? formatDate(partner.created_at.slice(0,10)) : null, color: 'bg-blue-100 text-blue-600' },
+          { icon: UserPlus, label: 'Added to CRM', date: (partner.joined_date || partner.created_at) ? formatDate((partner.joined_date || partner.created_at).slice(0,10)) : null, color: 'bg-blue-100 text-blue-600' },
           { icon: Send, label: 'Sample Sent', date: partner.sample_sent_at ? formatDate(partner.sample_sent_at) : null, color: 'bg-purple-100 text-purple-600' },
           { icon: ShoppingBag, label: 'First Order', date: firstOrder ? formatDate(firstOrder.date) : null, sub: firstOrder?.invoice_number, color: 'bg-amber-100 text-amber-600' },
           { icon: TrendingUp, label: 'Last Order', date: [partner.last_order_date, crmLastDate].filter(Boolean).sort().pop() ? formatDate([partner.last_order_date, crmLastDate].filter(Boolean).sort().pop()) : null, color: 'bg-green-100 text-[#3D6034]' },
