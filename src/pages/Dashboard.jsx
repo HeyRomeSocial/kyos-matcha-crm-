@@ -827,7 +827,11 @@ export default function Dashboard() {
     if (!acc[o.partner_id] || o.date < acc[o.partner_id]) acc[o.partner_id] = o.date
     return acc
   }, {})
-  const periodNewCafes = Object.values(firstOrderByPartner2).filter(d => d >= pRange.start && d <= pRange.end).length
+  // New Cafés = partners whose joined_date (or created_at fallback) falls in this period
+  const periodNewCafes = partners.filter(p => {
+    const d = (p.joined_date || (p.created_at || '').slice(0, 10))
+    return d >= pRange.start && d <= pRange.end
+  }).length
 
   const periodSamples     = partners.filter(p => p.sample_sent_at && p.sample_sent_at >= pRange.start && p.sample_sent_at <= pRange.end).length
   const prevPeriodSamples = partners.filter(p => p.sample_sent_at && p.sample_sent_at >= ppRange.start && p.sample_sent_at <= ppRange.end).length
@@ -1199,7 +1203,7 @@ export default function Dashboard() {
             <KpiCard label="Orders" value={periodOrderCount} sub={`AOV ${formatCurrency(periodAOV)}`} icon={ShoppingBag} trend={periodOrderTrend} />
             <KpiCard label="Matcha Shipped" value={`${periodKg.toFixed(1)} kg`} sub="Invoiced this period" icon={Package} trend={periodKgTrend} />
             <KpiCard label="Active Cafés" value={periodActiveCafes} sub={`${activePartners} active partners overall`} icon={Users} color="#534AB7" />
-            <KpiCard label="New Cafés" value={periodNewCafes} sub="First order this period" icon={Users} color="#0F6E56" />
+            <KpiCard label="New Cafés" value={periodNewCafes} sub="Added to CRM this period" icon={Users} color="#0F6E56" />
             <KpiCard label="Samples Sent" value={periodSamples} sub={`${samplesSentAllTime} all time`} icon={Send} trend={periodSampleTrend} color="#7C3AED" />
           </div>
           {/* Extra KPIs */}
