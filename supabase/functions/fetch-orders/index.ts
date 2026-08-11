@@ -70,9 +70,9 @@ serve(async (req) => {
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')!
     const accessToken = await getValidAccessToken(supabase, clientId, clientSecret)
 
-    // Fetch recent emails from last 30 days (read or unread)
+    // Only pull inbound emails (not sent by us, not automated/noreply)
     const listRes = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=newer_than:30d',
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=newer_than:30d in:inbox -from:me -from:noreply -from:no-reply',
       { headers: { Authorization: `Bearer ${accessToken}` } }
     )
     const listData = await listRes.json()
@@ -117,7 +117,7 @@ serve(async (req) => {
         max_tokens: 512,
         messages: [{
           role: 'user',
-          content: `You are parsing a wholesale matcha order email. Extract the order details from this email and respond with JSON only.
+          content: `You are helping a UK matcha wholesaler identify new inbound order requests from café partners.
 
 Email From: ${from}
 Subject: ${subject}
@@ -132,7 +132,10 @@ Respond with this exact JSON format (use null if info not found):
   "notes": "any special requests or delivery notes"
 }
 
-Only set is_order to true if this is clearly a product order request.`
+Rules:
+- Set is_order to TRUE only if this is a NEW inbound order request from a partner placing an order (e.g. "can we get 2kg", "we'd like to reorder", "please send us X kg")
+- Set is_order to FALSE if this is: a reply to an existing conversation, a thank you, a general enquiry, a delivery confirmation, an invoice, a marketing email, or anything that is NOT a new order request
+- The email must be FROM a partner TO Kyos Matcha — not the other way around`
         }]
       })
 
