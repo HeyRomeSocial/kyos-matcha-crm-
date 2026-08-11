@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Settings,
   LogOut, Menu, X, CheckSquare, Target, Megaphone, Send,
-  Map, Image, UserCircle
+  Map, Image, UserCircle, Inbox
 } from 'lucide-react'
 
 const navGroups = [
@@ -29,6 +29,12 @@ const navGroups = [
     items: [
       { to: '/marketing/campaigns', label: 'Campaigns', icon: Megaphone },
       { to: '/marketing/outreach', label: 'Outreach', icon: Send },
+    ]
+  },
+  {
+    label: 'Partner Tools',
+    items: [
+      { to: '/orders-inbox', label: 'Orders Inbox', icon: Inbox },
     ]
   },
   {

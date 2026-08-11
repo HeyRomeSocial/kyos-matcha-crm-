@@ -15,6 +15,7 @@ import Outreach from './pages/marketing/Outreach'
 import Team from './pages/workspace/Team'
 import BrandAssets from './pages/workspace/BrandAssets'
 import Settings from './pages/Settings'
+import OrdersInbox from './pages/OrdersInbox'
 
 function ProtectedRoute({ session, children }) {
   if (!session) return <Navigate to="/login" replace />
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="workspace/brand" element={<BrandAssets />} />
         <Route path="workspace/settings" element={<Settings />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="orders-inbox" element={<OrdersInbox />} />
       </Route>
     </Routes>
   )
