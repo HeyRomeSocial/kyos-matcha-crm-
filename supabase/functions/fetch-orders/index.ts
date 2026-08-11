@@ -70,9 +70,9 @@ serve(async (req) => {
     const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')!
     const accessToken = await getValidAccessToken(supabase, clientId, clientSecret)
 
-    // Fetch unread emails from partners@kyosmatcha.com inbox
+    // Fetch recent emails from last 30 days (read or unread)
     const listRes = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=is:unread',
+      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=newer_than:30d',
       { headers: { Authorization: `Bearer ${accessToken}` } }
     )
     const listData = await listRes.json()

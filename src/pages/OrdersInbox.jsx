@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff } from 'lucide-react'
+import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff, Trash2 } from 'lucide-react'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
@@ -64,6 +64,13 @@ export default function OrdersInbox() {
     window.location.href = `${SUPABASE_URL}/functions/v1/gmail-auth`
   }
 
+  async function handleReset() {
+    if (!confirm('This will clear all orders and re-fetch from Gmail. Continue?')) return
+    await supabase.from('order_inbox').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    setOrders([])
+    await handleRefresh()
+  }
+
   async function updateStatus(id, status) {
     await supabase.from('order_inbox').update({ status }).eq('id', id)
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
@@ -95,14 +102,25 @@ export default function OrdersInbox() {
             </span>
           )}
           {connected ? (
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 bg-[#3D6034] text-white text-sm font-medium rounded-lg hover:bg-[#2d4a26] disabled:opacity-60 transition-colors"
-            >
-              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-              {refreshing ? 'Checking...' : 'Check for Orders'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleReset}
+                disabled={refreshing}
+                title="Clear all and re-fetch"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-60 transition-colors"
+              >
+                <Trash2 size={14} />
+                Reset
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-[#3D6034] text-white text-sm font-medium rounded-lg hover:bg-[#2d4a26] disabled:opacity-60 transition-colors"
+              >
+                <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+                {refreshing ? 'Checking...' : 'Check for Orders'}
+              </button>
+            </div>
           ) : (
             <button
               onClick={handleConnect}
