@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+
 import { supabase } from '../lib/supabase'
 import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff } from 'lucide-react'
 
@@ -70,8 +71,6 @@ export default function OrdersInbox() {
 
   async function confirmOrder(order) {
     await updateStatus(order.id, 'confirmed')
-    // Navigate to invoice generator with pre-filled data
-    navigate(`/invoice?partner=${encodeURIComponent(order.parsed_partner || order.from_name)}&qty=${order.parsed_quantity_kg || ''}&product=${encodeURIComponent(order.parsed_product || '')}`)
   }
 
   const pending = orders.filter(o => o.status === 'pending')
@@ -145,7 +144,7 @@ export default function OrdersInbox() {
           {pending.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                Pending Review — {pending.length}
+                Orders to Pack — {pending.length}
               </p>
               {pending.map(order => (
                 <OrderCard
@@ -161,7 +160,7 @@ export default function OrdersInbox() {
           {done.length > 0 && (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-6">
-                Completed
+                Packed
               </p>
               {done.map(order => (
                 <OrderCard
@@ -234,7 +233,7 @@ function OrderCard({ order, onConfirm, onDismiss, done }) {
             onClick={onConfirm}
             className="flex-1 py-2 bg-[#3D6034] text-white text-sm font-medium rounded-lg hover:bg-[#2d4a26] transition-colors"
           >
-            Confirm — Create Invoice
+            Mark as Packed
           </button>
           <button
             onClick={onDismiss}
