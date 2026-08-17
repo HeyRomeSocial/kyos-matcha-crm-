@@ -420,11 +420,15 @@ async function build() {
 
     let lineY = pbY + pbH + 0.4;
 
-    // Anchor line: what the target is actually built from — last month's real total + the growth increment
+    // Anchor line: what the target is actually built from — either last month's real
+    // total or last month's own target (see g.prior_month_basis) + the growth increment.
+    // The ladder is a fixed staircase set by Ellis/Rome (July 208kg, +58kg/month) — it
+    // does not get rebased down just because a month missed its own target.
     if (g.prior_month_kg !== undefined && g.prior_month_kg !== null) {
       const priorLabel = g.prior_month_label ? monthAbbrev(g.prior_month_label) : "last month";
+      const basisWord = g.prior_month_basis === "target" ? "target" : "actual";
       s5.addText(
-        `${priorLabel} actual: ${fmtKg(g.prior_month_kg)}  →  +${g.increment_kg || 58} kg growth target = ${fmtKg(target)}` +
+        `${priorLabel} ${basisWord}: ${fmtKg(g.prior_month_kg)}  →  +${g.increment_kg || 58} kg growth target = ${fmtKg(target)}` +
         (reached ? `   ·   ✓ floor reached` : ""),
         { x: pbX, y: lineY, w: pbW, h: 0.3, fontSize: 11.5, color: MUTE, fontFace: "Calibri", margin: 0 }
       );

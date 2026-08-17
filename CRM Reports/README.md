@@ -105,17 +105,38 @@ Tabs used:
   is 21+ days before the report date. A follow-up nudge, not a churn verdict.
 - **Volume**: total kg of matcha shipped/invoiced in the period (available directly
   per-invoice in Raw: Orders — "Matcha KG" column).
-- **Monthly kg goal**: cumulative kg shipped this calendar month vs. a DYNAMIC
-  target = last calendar month's ACTUAL kg shipped + 58kg (Ellis's growth target).
-  Not a fixed pre-typed table — confirmed anchor: June 2026 actually ended at
-  150.5kg, so July's real target is 208.5kg, not a flat "208". Always pass the
-  prior month's verified actual (`--prior-month-kg` / `--prior-month-label` on
-  `kyos_report_engine.py`, or `prior_month_kg=` on `compute_full_weekly_report()`)
-  so the target self-corrects instead of drifting from reality.
-  `DEFAULT_TARGET_LADDER` is only a fallback for when the prior month's actual
-  isn't known yet. A "stretch goal" (target × 1.15) is also computed — the +58kg
-  number is the floor, not the ceiling; insights should call out ways to beat it,
-  not just hit it.
+- **Monthly kg goal**: cumulative kg shipped this calendar month vs. a FIXED
+  staircase target confirmed directly by Rome (Ellis's growth target), +58kg per
+  month, anchored at July 2026 = 208kg:
+
+  | Month | Target kg |
+  | --- | ---: |
+  | July 2026 | 208 |
+  | August 2026 | 266 |
+  | September 2026 | 324 |
+  | October 2026 | 382 |
+  | November 2026 | 440 |
+  | December 2026 | 498 |
+  | January 2027 | 556 |
+  | February 2027 (extrapolated) | 614 |
+
+  **Important — do NOT recompute this from each month's actual.** An earlier
+  version of this doc said the target was "last calendar month's ACTUAL kg
+  shipped + 58kg" and self-correcting — that was wrong and produced a bad
+  number (192.75kg instead of 266kg for August) because July's real actual
+  (134.75kg) came in under July's own 208kg target. Rome corrected this
+  explicitly: the staircase does NOT get rebased down just because a month
+  missed its own target — each month's target is simply the PRIOR MONTH'S
+  TARGET + 58kg, not prior month's actual + 58kg. The table above is
+  authoritative; extend it forward by +58kg/month as needed, and don't derive
+  it from `monthly_actuals` at all. `goal.prior_month_kg` should hold the prior
+  month's *target* (e.g. 208 for August), with `goal.prior_month_basis: "target"`
+  so `build_weekly.js` labels the anchor line "Jul target: 208 kg" rather than
+  "Jul actual: 208 kg" (which would misstate what July actually shipped —
+  134.75kg, well under target). June 2026 is the one exception: its 150.5kg
+  figure in the ladder is a real confirmed actual (see the June-2026 override
+  above), not a target, since it's the anchor the whole staircase was built from.
+  No stretch goal — see "Goal reached" note below, Rome removed that concept.
 - **Monthly kg growth trajectory** (slide, not a chart): Rome asked for the old
   8-week bar chart to be removed — she didn't like it as a visual. It's replaced by
   a row of chips across verified past months (real `actual_kg`, tinted green if the
@@ -129,15 +150,16 @@ Tabs used:
   final month (e.g. "...reaches 556.0 kg by January 2027 — roughly 4.5x June's
   total.").
 - **Goal reached mid-month ≠ done for the month.** `compute_goal()` returns
-  `goal_reached` (mtd_kg >= target_kg) and `remaining_to_stretch_kg`. When true,
-  `build_weekly.js` shows a "✓ GOAL REACHED — PUSHING FOR MORE" badge, scales the
-  progress bar to the stretch goal (not just the floor) with marker lines at both
-  the target and stretch positions, and adds a dedicated banner ("don't stop here,
-  X kg more gets you to the stretch goal") that always shows regardless of what
-  `goal.note` says — per Rome, hitting the floor early shouldn't read as "mission
-  accomplished, ease off." The current month's trajectory chip also gets a small
-  gold checkmark badge and switches to "beat" styling once it clears its own
-  target, even while still in progress.
+  `goal_reached` (mtd_kg >= target_kg). When true, `build_weekly.js` shows a
+  "✓ GOAL REACHED — PUSHING FOR MORE" badge and a dedicated banner ("don't stop
+  here, worth keeping the pace going rather than easing off") that always shows
+  regardless of what `goal.note` says — per Rome, hitting the floor early
+  shouldn't read as "mission accomplished, ease off." There is no stretch goal —
+  Rome removed that concept entirely (no `stretch_kg`, no second marker line, no
+  "stretch" wording anywhere in the deck or JSON); the progress bar has a single
+  marker at the fixed target only. The current month's trajectory chip also gets
+  a small gold checkmark badge and switches to "beat" styling once it clears its
+  own target, even while still in progress.
 - **Week-over-week (WoW) deltas**: `compute_wow_deltas()` compares this week's
   revenue/orders/kg/active-accounts to the immediately prior Mon-Sun week and
   returns `{revenue_pct, orders_pct, kg_pct, active_pct}` (plus the `_prior` raw

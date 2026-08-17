@@ -423,20 +423,40 @@ kyosmatcha.com`
           <div className="space-y-2">
             {lineItems.map(item => (
               <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                {['Premium Matcha A', 'Premium Matcha AAA', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit', 'Retail Shelf (Free of Charge)'].includes(item.desc) || item.desc === '' ? (
+                {['Premium Matcha A', 'Premium Matcha AAA', 'Matcha Tin 30g', 'Matcha Tin 50g', 'Matcha Tin 100g', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit', 'Retail Shelf (Free of Charge)'].includes(item.desc) || item.desc === '' ? (
                   <select
                     className="input col-span-5 text-xs"
                     value={item.desc}
-                    onChange={e => updateItem(item.id, 'desc', e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value
+                      if (val === '__other__') {
+                        updateItem(item.id, 'desc', '')
+                      } else {
+                        updateItem(item.id, 'desc', val)
+                        // Auto-fill price for tins
+                        if (val === 'Matcha Tin 30g') updateItem(item.id, 'price', 8.35)
+                        if (val === 'Matcha Tin 50g') updateItem(item.id, 'price', 11.25)
+                        if (val === 'Matcha Tin 100g') updateItem(item.id, 'price', 18.50)
+                      }
+                    }}
                   >
                     <option value="">Select item…</option>
-                    <option value="Premium Matcha A">Premium Matcha A</option>
-                    <option value="Premium Matcha AAA">Premium Matcha AAA</option>
-                    <option value="Royal Mail Shipping Fee">Royal Mail Shipping Fee</option>
-                    <option value="Retail Pouch 50g">Retail Pouch 50g</option>
-                    <option value="Starter Kit">Starter Kit</option>
-                    <option value="Retail Shelf (Free of Charge)">Retail Shelf (Free of Charge)</option>
-                    <option value="__other__">Other…</option>
+                    <optgroup label="Matcha Powder">
+                      <option value="Premium Matcha A">Premium Matcha A</option>
+                      <option value="Premium Matcha AAA">Premium Matcha AAA</option>
+                    </optgroup>
+                    <optgroup label="Matcha Tins">
+                      <option value="Matcha Tin 30g">Matcha Tin 30g</option>
+                      <option value="Matcha Tin 50g">Matcha Tin 50g</option>
+                      <option value="Matcha Tin 100g">Matcha Tin 100g</option>
+                    </optgroup>
+                    <optgroup label="Other">
+                      <option value="Royal Mail Shipping Fee">Royal Mail Shipping Fee</option>
+                      <option value="Retail Pouch 50g">Retail Pouch 50g</option>
+                      <option value="Starter Kit">Starter Kit</option>
+                      <option value="Retail Shelf (Free of Charge)">Retail Shelf (Free of Charge)</option>
+                      <option value="__other__">Custom item…</option>
+                    </optgroup>
                   </select>
                 ) : (
                   <input
@@ -487,6 +507,33 @@ kyosmatcha.com`
               className="flex items-center gap-1.5 text-xs text-[#3D6034] hover:text-[#2E4A27] font-medium"
             >
               <Plus size={13} /> Add line item
+            </button>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('', 1, 0)])}
+              className="flex items-center gap-1 text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Custom item
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pt-1 border-t border-gray-100">
+            <span className="text-[10px] text-gray-400 uppercase tracking-wide self-center">Quick add:</span>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('Matcha Tin 30g', 1, 8.35)])}
+              className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Tin 30g
+            </button>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('Matcha Tin 50g', 1, 11.25)])}
+              className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Tin 50g
+            </button>
+            <button
+              onClick={() => setLineItems(i => [...i, newItem('Matcha Tin 100g', 1, 18.50)])}
+              className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
+            >
+              + Tin 100g
             </button>
             <button
               onClick={() => setLineItems(i => [...i, newItem('Retail Pouch 50g', 1, 0)])}
