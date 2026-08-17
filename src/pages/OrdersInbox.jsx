@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
@@ -76,8 +76,18 @@ export default function OrdersInbox() {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
   }
 
-  async function confirmOrder(order) {
-    await updateStatus(order.id, 'confirmed')
+  async function confirmOrder(order, fields) {
+    if (fields) {
+      await supabase.from('order_inbox').update({ ...fields, status: 'confirmed' }).eq('id', order.id)
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...fields, status: 'confirmed' } : o))
+    } else {
+      await updateStatus(order.id, 'confirmed')
+    }
+  }
+
+  async function handleUpdate(id, fields) {
+    await supabase.from('order_inbox').update(fields).eq('id', id)
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...fields } : o))
   }
 
   const pending = orders.filter(o => o.status === 'pending')
@@ -168,8 +178,9 @@ export default function OrdersInbox() {
                 <OrderCard
                   key={order.id}
                   order={order}
-                  onConfirm={() => confirmOrder(order)}
+                  onConfirm={(fields) => confirmOrder(order, fields)}
                   onDismiss={() => updateStatus(order.id, 'dismissed')}
+                  onUpdate={(fields) => handleUpdate(order.id, fields)}
                 />
               ))}
             </div>
@@ -195,7 +206,40 @@ export default function OrdersInbox() {
   )
 }
 
-function OrderCard({ order, onConfirm, onDismiss, done }) {
+function EditableField({ label, value, onChange, type = 'text', placeholder = '—' }) {
+  return (
+    <div>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+      <input
+        type={type}
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full text-sm text-gray-800 bg-transparent border-b border-dashed border-gray-200 focus:border-[#3D6034] focus:outline-none py-0.5 transition-colors placeholder:text-gray-300"
+      />
+    </div>
+  )
+}
+
+function OrderCard({ order, onConfirm, onDismiss, onUpdate, done }) {
+  const [fields, setFields] = useState({
+    parsed_partner: order.parsed_partner || '',
+    parsed_product: order.parsed_product || '',
+    parsed_quantity_kg: order.parsed_quantity_kg || '',
+    parsed_notes: order.parsed_notes || '',
+  })
+  const [dirty, setDirty] = useState(false)
+
+  function update(field, value) {
+    setFields(f => ({ ...f, [field]: value }))
+    setDirty(true)
+  }
+
+  async function saveEdits() {
+    await onUpdate(fields)
+    setDirty(false)
+  }
+
   const date = order.received_at
     ? new Date(order.received_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : '—'
@@ -209,46 +253,66 @@ function OrderCard({ order, onConfirm, onDismiss, done }) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {order.parsed_partner || order.from_name || order.from_email}
+              {fields.parsed_partner || order.from_name || order.from_email}
             </p>
             <p className="text-xs text-gray-400">{order.from_email} · {date}</p>
           </div>
         </div>
-        {order.status === 'confirmed' && (
-          <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium flex-shrink-0">
-            <CheckCircle size={13} /> Confirmed
-          </span>
-        )}
-        {order.status === 'dismissed' && (
-          <span className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
-            <XCircle size={13} /> Dismissed
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {dirty && (
+            <button
+              onClick={saveEdits}
+              className="text-xs text-[#3D6034] font-medium border border-[#3D6034] px-2 py-1 rounded-lg hover:bg-[#EEF3EC] transition-colors"
+            >
+              Save
+            </button>
+          )}
+          {order.status === 'confirmed' && (
+            <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+              <CheckCircle size={13} /> Packed
+            </span>
+          )}
+          {order.status === 'dismissed' && (
+            <span className="flex items-center gap-1 text-xs text-gray-400">
+              <XCircle size={13} /> Dismissed
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Product</p>
-          <p className="text-sm text-gray-800">{order.parsed_product || '—'}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Quantity</p>
-          <p className="text-sm text-gray-800">{order.parsed_quantity_kg ? `${order.parsed_quantity_kg} kg` : '—'}</p>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Subject</p>
-          <p className="text-sm text-gray-800 truncate">{order.subject || '—'}</p>
-        </div>
+        {done ? (
+          <>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Partner</p>
+              <p className="text-sm text-gray-800">{fields.parsed_partner || '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Product</p>
+              <p className="text-sm text-gray-800">{fields.parsed_product || '—'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Quantity</p>
+              <p className="text-sm text-gray-800">{fields.parsed_quantity_kg ? `${fields.parsed_quantity_kg} kg` : '—'}</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <EditableField label="Partner" value={fields.parsed_partner} onChange={v => update('parsed_partner', v)} placeholder="Cafe name" />
+            <EditableField label="Product" value={fields.parsed_product} onChange={v => update('parsed_product', v)} placeholder="e.g. Matcha A" />
+            <EditableField label="Quantity (kg)" value={fields.parsed_quantity_kg} onChange={v => update('parsed_quantity_kg', v)} type="number" placeholder="e.g. 2" />
+          </>
+        )}
       </div>
 
-      {order.parsed_notes && (
-        <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">{order.parsed_notes}</p>
+      {!done && (
+        <EditableField label="Notes" value={fields.parsed_notes} onChange={v => update('parsed_notes', v)} placeholder="Any special requests or delivery notes" />
       )}
 
       {!done && (
         <div className="flex gap-2 pt-1">
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(fields)}
             className="flex-1 py-2 bg-[#3D6034] text-white text-sm font-medium rounded-lg hover:bg-[#2d4a26] transition-colors"
           >
             Mark as Packed
