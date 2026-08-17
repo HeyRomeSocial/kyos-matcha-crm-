@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff, Trash2 } from 'lucide-react'
+import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff, Trash2, BoxesIcon, CalendarCheck, Clock, TrendingUp } from 'lucide-react'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
@@ -93,6 +93,15 @@ export default function OrdersInbox() {
   const pending = orders.filter(o => o.status === 'pending')
   const done = orders.filter(o => o.status !== 'pending')
 
+  const now = new Date()
+  const todayStr = now.toDateString()
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000)
+
+  const ordersToPackToday = pending.filter(o => o.received_at && new Date(o.received_at).toDateString() === todayStr).length
+  const packedThisWeek = orders.filter(o => o.status === 'confirmed' && o.received_at && new Date(o.received_at) >= weekAgo).length
+  const totalPending = pending.length
+  const totalDismissed = orders.filter(o => o.status === 'dismissed').length
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
@@ -140,6 +149,42 @@ export default function OrdersInbox() {
               Connect Gmail
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock size={14} className="text-amber-500" />
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Today</p>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{ordersToPackToday}</p>
+          <p className="text-xs text-gray-400 mt-0.5">orders to pack</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Package size={14} className="text-[#3D6034]" />
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Pending</p>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{totalPending}</p>
+          <p className="text-xs text-gray-400 mt-0.5">awaiting action</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <CalendarCheck size={14} className="text-emerald-500" />
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">This Week</p>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{packedThisWeek}</p>
+          <p className="text-xs text-gray-400 mt-0.5">orders packed</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp size={14} className="text-blue-400" />
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Total</p>
+          </div>
+          <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+          <p className="text-xs text-gray-400 mt-0.5">emails processed</p>
         </div>
       </div>
 
