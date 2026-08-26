@@ -13,7 +13,8 @@
       "Bash(pbcopy)",
       "Bash(# Use a high quality matcha field from the web as placeholder, *)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(rm \"/Users/romeabalain/Desktop/Kyos Matcha Invoice.html\")"
+      "Bash(rm \"/Users/romeabalain/Desktop/Kyos Matcha Invoice.html\")",
+      "Bash(node -e ' *)"
     ]
   }
 }
