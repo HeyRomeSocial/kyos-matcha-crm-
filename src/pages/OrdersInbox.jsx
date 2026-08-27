@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
-import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff, Trash2, BoxesIcon, CalendarCheck, Clock, TrendingUp } from 'lucide-react'
+import { RefreshCw, Mail, CheckCircle, XCircle, Package, User, AlertCircle, Wifi, WifiOff, Trash2, CalendarCheck, Clock, TrendingUp, PlusCircle, X } from 'lucide-react'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
@@ -11,6 +11,9 @@ export default function OrdersInbox() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [connected, setConnected] = useState(false)
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [manualForm, setManualForm] = useState({ parsed_partner: '', parsed_product: '', parsed_quantity_kg: '', parsed_notes: '' })
+  const [savingManual, setSavingManual] = useState(false)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -85,6 +88,29 @@ export default function OrdersInbox() {
     }
   }
 
+  async function handleAddManual() {
+    if (!manualForm.parsed_partner.trim()) { alert('Please enter a partner name'); return }
+    setSavingManual(true)
+    const { data, error } = await supabase.from('order_inbox').insert({
+      email_id: 'manual-' + Date.now(),
+      received_at: new Date().toISOString(),
+      from_email: 'manual',
+      from_name: manualForm.parsed_partner,
+      subject: 'Manual order',
+      parsed_partner: manualForm.parsed_partner,
+      parsed_product: manualForm.parsed_product,
+      parsed_quantity_kg: manualForm.parsed_quantity_kg ? Number(manualForm.parsed_quantity_kg) : null,
+      parsed_notes: manualForm.parsed_notes,
+      status: 'pending',
+    }).select().single()
+    if (!error && data) {
+      setOrders(prev => [data, ...prev])
+      setManualForm({ parsed_partner: '', parsed_product: '', parsed_quantity_kg: '', parsed_notes: '' })
+      setShowManualForm(false)
+    }
+    setSavingManual(false)
+  }
+
   async function handleUpdate(id, fields) {
     await supabase.from('order_inbox').update(fields).eq('id', id)
     setOrders(prev => prev.map(o => o.id === id ? { ...o, ...fields } : o))
@@ -120,6 +146,13 @@ export default function OrdersInbox() {
               <WifiOff size={13} /> Not connected
             </span>
           )}
+          <button
+            onClick={() => setShowManualForm(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-[#3D6034] border border-[#3D6034] rounded-lg hover:bg-[#EEF3EC] transition-colors font-medium"
+          >
+            <PlusCircle size={14} />
+            Add Manual Order
+          </button>
           {connected ? (
             <div className="flex items-center gap-2">
               <button
@@ -151,6 +184,75 @@ export default function OrdersInbox() {
           )}
         </div>
       </div>
+
+      {/* Manual Order Modal */}
+      {showManualForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900">Add Manual Order</h2>
+              <button onClick={() => setShowManualForm(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Partner / Cafe *</label>
+                <input
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3D6034]"
+                  placeholder="e.g. Base Falmouth"
+                  value={manualForm.parsed_partner}
+                  onChange={e => setManualForm(f => ({ ...f, parsed_partner: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Product</label>
+                <input
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3D6034]"
+                  placeholder="e.g. Premium Matcha A"
+                  value={manualForm.parsed_product}
+                  onChange={e => setManualForm(f => ({ ...f, parsed_product: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Quantity (kg)</label>
+                <input
+                  type="number"
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3D6034]"
+                  placeholder="e.g. 2"
+                  value={manualForm.parsed_quantity_kg}
+                  onChange={e => setManualForm(f => ({ ...f, parsed_quantity_kg: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Notes</label>
+                <textarea
+                  className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3D6034] resize-none"
+                  rows={2}
+                  placeholder="Any special requests or delivery notes"
+                  value={manualForm.parsed_notes}
+                  onChange={e => setManualForm(f => ({ ...f, parsed_notes: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleAddManual}
+                disabled={savingManual}
+                className="flex-1 py-2.5 bg-[#3D6034] text-white text-sm font-medium rounded-lg hover:bg-[#2d4a26] disabled:opacity-60 transition-colors"
+              >
+                {savingManual ? 'Adding...' : 'Add to Orders to Pack'}
+              </button>
+              <button
+                onClick={() => setShowManualForm(false)}
+                className="px-4 py-2.5 text-sm text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
