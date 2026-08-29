@@ -34,26 +34,11 @@ export default function OrdersInbox() {
 
   async function fetchOrders() {
     setLoading(true)
-    const [{ data: inboxData }, { data: invoiceData }] = await Promise.all([
-      supabase.from('order_inbox').select('*').order('received_at', { ascending: false }),
-      supabase.from('orders').select('invoice_number, partner_name, date, status').order('date', { ascending: false }),
-    ])
-
-    // Build a map of partner_name → latest invoice for quick lookup
-    const invoiceMap = {}
-    for (const inv of (invoiceData || [])) {
-      const key = (inv.partner_name || '').toLowerCase().trim()
-      if (!invoiceMap[key]) invoiceMap[key] = inv
-    }
-
-    // Attach invoice info to each inbox order
-    const enriched = (inboxData || []).map(order => {
-      const partnerKey = (order.parsed_partner || order.from_name || '').toLowerCase().trim()
-      const match = invoiceMap[partnerKey]
-      return { ...order, _invoice: match || null }
-    })
-
-    setOrders(enriched)
+    const { data } = await supabase
+      .from('order_inbox')
+      .select('*')
+      .order('received_at', { ascending: false })
+    setOrders(data || [])
     setLoading(false)
   }
 
@@ -471,21 +456,22 @@ function OrderCard({ order, onConfirm, onDismiss, onUpdate, done }) {
         <EditableField label="Notes" value={fields.parsed_notes} onChange={v => update('parsed_notes', v)} placeholder="Any special requests or delivery notes" />
       )}
 
-      {/* Invoice detection */}
-      {order._invoice && (
-        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
-          order._invoice.status === 'unpaid'
-            ? 'bg-amber-50 border border-amber-200 text-amber-800'
-            : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-        }`}>
-          {order._invoice.status === 'unpaid' ? '⚠️' : '✅'}
-          <span>
-            Invoice {order._invoice.invoice_number} already exists
-            {order._invoice.status === 'unpaid' ? ' — unpaid' : ' — paid'}
-            {' '}· {new Date(order._invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </span>
-        </div>
-      )}
+      {/* Invoice checkbox */}
+      <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+        <input
+          type="checkbox"
+          checked={!!order.invoice_created}
+          onChange={async e => {
+            await supabase.from('order_inbox').update({ invoice_created: e.target.checked }).eq('id', order.id)
+            // update local state via onUpdate
+            onUpdate && onUpdate({ invoice_created: e.target.checked })
+          }}
+          className="w-4 h-4 accent-[#3D6034] cursor-pointer"
+        />
+        <span className={`text-xs font-medium ${order.invoice_created ? 'text-emerald-600' : 'text-gray-400'}`}>
+          {order.invoice_created ? 'Invoice created' : 'Invoice not yet created'}
+        </span>
+      </label>
 
       {!done && (
         <div className="flex gap-2 pt-1">
