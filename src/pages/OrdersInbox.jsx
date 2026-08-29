@@ -376,6 +376,7 @@ function OrderCard({ order, onConfirm, onDismiss, onUpdate, done }) {
     parsed_notes: order.parsed_notes || '',
   })
   const [dirty, setDirty] = useState(false)
+  const [invoiceCreated, setInvoiceCreated] = useState(!!order.invoice_created)
 
   function update(field, value) {
     setFields(f => ({ ...f, [field]: value }))
@@ -460,16 +461,16 @@ function OrderCard({ order, onConfirm, onDismiss, onUpdate, done }) {
       <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
         <input
           type="checkbox"
-          checked={!!order.invoice_created}
+          checked={invoiceCreated}
           onChange={async e => {
-            await supabase.from('order_inbox').update({ invoice_created: e.target.checked }).eq('id', order.id)
-            // update local state via onUpdate
-            onUpdate && onUpdate({ invoice_created: e.target.checked })
+            const val = e.target.checked
+            setInvoiceCreated(val)
+            await supabase.from('order_inbox').update({ invoice_created: val }).eq('id', order.id)
           }}
           className="w-4 h-4 accent-[#3D6034] cursor-pointer"
         />
-        <span className={`text-xs font-medium ${order.invoice_created ? 'text-emerald-600' : 'text-gray-400'}`}>
-          {order.invoice_created ? 'Invoice created' : 'Invoice not yet created'}
+        <span className={`text-xs font-medium ${invoiceCreated ? 'text-emerald-600' : 'text-gray-400'}`}>
+          {invoiceCreated ? 'Invoice created' : 'Invoice not yet created'}
         </span>
       </label>
 
