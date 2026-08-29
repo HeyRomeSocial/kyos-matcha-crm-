@@ -34,11 +34,26 @@ export default function OrdersInbox() {
 
   async function fetchOrders() {
     setLoading(true)
-    const { data } = await supabase
-      .from('order_inbox')
-      .select('*')
-      .order('received_at', { ascending: false })
-    setOrders(data || [])
+    const [{ data: inboxData }, { data: invoiceData }] = await Promise.all([
+      supabase.from('order_inbox').select('*').order('received_at', { ascending: false }),
+      supabase.from('orders').select('invoice_number, partner_name, date, status').order('date', { ascending: false }),
+    ])
+
+    // Build a map of partner_name → latest invoice for quick lookup
+    const invoiceMap = {}
+    for (const inv of (invoiceData || [])) {
+      const key = (inv.partner_name || '').toLowerCase().trim()
+      if (!invoiceMap[key]) invoiceMap[key] = inv
+    }
+
+    // Attach invoice info to each inbox order
+    const enriched = (inboxData || []).map(order => {
+      const partnerKey = (order.parsed_partner || order.from_name || '').toLowerCase().trim()
+      const match = invoiceMap[partnerKey]
+      return { ...order, _invoice: match || null }
+    })
+
+    setOrders(enriched)
     setLoading(false)
   }
 
@@ -454,6 +469,22 @@ function OrderCard({ order, onConfirm, onDismiss, onUpdate, done }) {
 
       {!done && (
         <EditableField label="Notes" value={fields.parsed_notes} onChange={v => update('parsed_notes', v)} placeholder="Any special requests or delivery notes" />
+      )}
+
+      {/* Invoice detection */}
+      {order._invoice && (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
+          order._invoice.status === 'unpaid'
+            ? 'bg-amber-50 border border-amber-200 text-amber-800'
+            : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+        }`}>
+          {order._invoice.status === 'unpaid' ? '⚠️' : '✅'}
+          <span>
+            Invoice {order._invoice.invoice_number} already exists
+            {order._invoice.status === 'unpaid' ? ' — unpaid' : ' — paid'}
+            {' '}· {new Date(order._invoice.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        </div>
       )}
 
       {!done && (
