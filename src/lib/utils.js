@@ -33,9 +33,17 @@ export function reorderUrgency(nextExpectedOrder) {
 // Starter kits and non-matcha lines contribute 0 kg.
 export function lineItemKg(li) {
   const desc = (li.desc || '').toLowerCase()
-  // Any 50g item (retail pouches, resale pouches) = 0.05 kg each
+  // Tins — count by their actual weight, not qty-as-kg
+  if (desc.includes('tin 30g') || desc.includes('30g ceremonial')) return (Number(li.qty) || 0) * 0.03
+  if (desc.includes('tin 50g')) return (Number(li.qty) || 0) * 0.05
+  if (desc.includes('tin 100g')) return (Number(li.qty) || 0) * 0.1
+  // Retail pouches = 50g each
   if (desc.includes('50g') || desc.includes('retail pouch') || (desc.includes('pouch') && !desc.includes('matcha')))
     return (Number(li.qty) || 0) * 0.05
+  // Starter kit, whisk, shelf, shipping = no matcha kg
+  if (desc.includes('starter kit') || desc.includes('whisk') || desc.includes('shelf') || desc.includes('shipping'))
+    return 0
+  // Bulk matcha lines — qty is in kg
   if (desc.includes('matcha')) return Number(li.qty) || 0
   return 0
 }
