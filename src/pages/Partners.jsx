@@ -19,10 +19,12 @@ const STATUS_LABELS = {
 const STATUS_COLORS = {
   prospect: 'bg-blue-100 text-blue-700',
   sample_sent: 'bg-purple-100 text-purple-700',
-  active: 'bg-green-100 text-[#3D6034]',
+  active: 'bg-[#EEF3EC] text-[#3D6034]',
   inactive: 'bg-gray-100 text-gray-600',
-  not_interested: 'bg-red-100 text-red-600',
+  not_interested: 'bg-red-50 text-red-600',
 }
+
+const SKU_LABELS = { A: 'A', AAA: 'AAA', both: 'A+AAA' }
 
 function ConfirmDialog({ name, onConfirm, onCancel }) {
   return (
@@ -261,11 +263,10 @@ export default function Partners() {
             <thead>
               <tr className="border-b border-gray-100">
                 {[
-                  { label: 'Name',         key: 'name' },
+                  { label: 'Partner',      key: 'name' },
                   { label: 'Status',       key: null },
-                  { label: 'Contact',      key: null },
                   { label: 'Price/KG',     key: 'price_per_kg' },
-                  { label: 'Total Orders', key: 'total_orders' },
+                  { label: 'Orders',       key: 'total_orders' },
                   { label: 'Total KG',     key: 'total_kg' },
                   { label: 'Total Spent',  key: 'total_spent' },
                   { label: 'Last Order',   key: 'last_order' },
@@ -276,8 +277,8 @@ export default function Partners() {
                   <th
                     key={label}
                     onClick={() => key && handleSort(key)}
-                    className={`text-left text-xs font-medium px-4 py-3 whitespace-nowrap select-none ${
-                      key ? 'cursor-pointer hover:text-gray-700 text-gray-400' : 'text-gray-400'
+                    className={`text-left text-[10px] font-semibold uppercase tracking-wider px-4 py-3 whitespace-nowrap select-none ${
+                      key ? 'cursor-pointer hover:text-gray-600 text-gray-400' : 'text-gray-400'
                     } ${sortKey === key ? 'text-[#3D6034]' : ''}`}
                   >
                     {label}{key && <SortIcon col={key} />}
@@ -292,30 +293,40 @@ export default function Partners() {
                 <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">No partners found</td></tr>
               ) : filtered.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 group">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5 min-w-[180px]">
                     <button
                       onClick={() => navigate(`/partners/${p.id}`)}
-                      className="text-sm font-medium text-gray-900 hover:text-[#3D6034] flex items-center gap-1"
+                      className="w-full text-left group/name"
                     >
-                      {p.name}
-                      <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-gray-900 group-hover/name:text-[#3D6034] transition-colors leading-tight">
+                          {p.name}
+                        </span>
+                        {p.preferred_sku && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0" style={{ background: '#1C2118', color: '#F6F8F5', letterSpacing: '0.3px' }}>
+                            {SKU_LABELS[p.preferred_sku] || p.preferred_sku}
+                          </span>
+                        )}
+                      </div>
+                      {p.contact_name && (
+                        <p className="text-xs text-gray-400 mt-0.5">{p.contact_name}</p>
+                      )}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[p.status]}`}>
+                  <td className="px-4 py-3.5">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[p.status]}`}>
                       {STATUS_LABELS[p.status]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{p.contact_name || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{p.price_per_kg ? formatCurrency(p.price_per_kg) : '—'}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.combined_orders || 0}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.combined_kg ? `${Number(p.combined_kg).toFixed(1)}kg` : '—'}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-[#3D6034]">
-                    {p.combined_spent ? formatCurrency(p.combined_spent) : '—'}
+                  <td className="px-4 py-3.5 text-sm text-gray-600 tabular-nums">{p.price_per_kg ? formatCurrency(p.price_per_kg) : <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3.5 text-sm font-semibold text-gray-900 tabular-nums">{p.combined_orders || <span className="text-gray-300 font-normal">0</span>}</td>
+                  <td className="px-4 py-3.5 text-sm font-semibold text-gray-900 tabular-nums">{p.combined_kg ? `${Number(p.combined_kg).toFixed(1)} kg` : <span className="text-gray-300 font-normal">—</span>}</td>
+                  <td className="px-4 py-3.5 text-sm font-semibold text-[#3D6034] tabular-nums">
+                    {p.combined_spent ? formatCurrency(p.combined_spent) : <span className="text-gray-300 font-normal">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(p.combined_last_order)}</td>
-                  <td className="px-4 py-3"><NextOrderCell partner={p} /></td>
-                  <td className="px-4 py-3 text-sm text-gray-400">{formatDate((p.joined_date || p.created_at || '').slice(0,10)) || '—'}</td>
+                  <td className="px-4 py-3.5 text-sm text-gray-500">{formatDate(p.combined_last_order) || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3.5"><NextOrderCell partner={p} /></td>
+                  <td className="px-4 py-3.5 text-sm text-gray-400">{formatDate((p.joined_date || p.created_at || '').slice(0, 10)) || <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
