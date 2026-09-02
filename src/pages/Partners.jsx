@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDate, reorderUrgency } from '../lib/utils'
 import PartnerModal from '../components/PartnerModal'
-import { Plus, Search, Pencil, ExternalLink, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Mail, Copy, Download, X } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, ChevronUp, ChevronDown, ChevronsUpDown, Mail, Copy, Download, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const STATUSES = ['all', 'prospect', 'sample_sent', 'active', 'inactive', 'not_interested']
@@ -16,15 +16,21 @@ const STATUS_LABELS = {
   not_interested: 'Not Interested',
 }
 
-const STATUS_COLORS = {
-  prospect: 'bg-blue-100 text-blue-700',
-  sample_sent: 'bg-purple-100 text-purple-700',
-  active: 'bg-[#EEF3EC] text-[#3D6034]',
-  inactive: 'bg-gray-100 text-gray-600',
-  not_interested: 'bg-red-50 text-red-600',
+const STATUS_DOT = {
+  prospect:       'bg-blue-500',
+  sample_sent:    'bg-purple-500',
+  active:         'bg-[#3D6034]',
+  inactive:       'bg-gray-400',
+  not_interested: 'bg-red-400',
 }
 
-const SKU_LABELS = { A: 'A', AAA: 'AAA', both: 'A+AAA' }
+const STATUS_BADGE = {
+  prospect:       'bg-blue-50 text-blue-700',
+  sample_sent:    'bg-purple-50 text-purple-700',
+  active:         'bg-[#EEF3EC] text-[#3D6034]',
+  inactive:       'bg-gray-100 text-gray-500',
+  not_interested: 'bg-red-50 text-red-600',
+}
 
 function ConfirmDialog({ name, onConfirm, onCancel }) {
   return (
@@ -66,10 +72,10 @@ export default function Partners() {
   }
 
   function SortIcon({ col }) {
-    if (sortKey !== col) return <ChevronsUpDown size={12} className="text-gray-300 ml-1 inline" />
+    if (sortKey !== col) return <ChevronsUpDown size={11} className="text-gray-300 ml-1 inline" />
     return sortDir === 'asc'
-      ? <ChevronUp size={12} className="text-[#3D6034] ml-1 inline" />
-      : <ChevronDown size={12} className="text-[#3D6034] ml-1 inline" />
+      ? <ChevronUp size={11} className="text-[#3D6034] ml-1 inline" />
+      : <ChevronDown size={11} className="text-[#3D6034] ml-1 inline" />
   }
 
   async function load() {
@@ -78,7 +84,6 @@ export default function Partners() {
       supabase.from('orders').select('partner_id, total, line_items, date'),
     ])
 
-    // Build per-partner CRM stats from actual orders
     const crmStats = (orders || []).reduce((acc, o) => {
       if (!o.partner_id) return acc
       acc[o.partner_id] = acc[o.partner_id] || { orders: 0, kg: 0, spent: 0, lastDate: null }
@@ -92,7 +97,6 @@ export default function Partners() {
       return acc
     }, {})
 
-    // Combine: historical (CSV import) + CRM orders
     const enriched = (p || []).map(partner => {
       const crm = crmStats[partner.id] || { orders: 0, kg: 0, spent: 0, lastDate: null }
       const historicalKg = Number(partner.total_kg) || 0
@@ -114,7 +118,6 @@ export default function Partners() {
 
   useEffect(() => {
     load()
-    // Real-time: refresh when orders or partners change
     const channel = supabase.channel('partners_page_rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'partners' }, load)
@@ -137,17 +140,12 @@ export default function Partners() {
     const list = partners.filter(p => {
       const lastOrder = p.combined_last_order || p.last_order_date || null
       const noOrderIn30 = p.status === 'active' && (!lastOrder || lastOrder < cutoffStr)
-
-      const matchStatus = filter === 'all'
-        || p.status === filter
-        || (filter === 'inactive' && noOrderIn30)
-
+      const matchStatus = filter === 'all' || p.status === filter || (filter === 'inactive' && noOrderIn30)
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.contact_name?.toLowerCase().includes(search.toLowerCase())
       return matchStatus && matchSearch
     })
     return [...list].sort((a, b) => {
-      // Inactive tab: active partners with no order in 21 days first, then truly inactive, both sorted oldest last order first
       if (filter === 'inactive') {
         const aNoOrder = a.status === 'active'
         const bNoOrder = b.status === 'active'
@@ -178,29 +176,44 @@ export default function Partners() {
     })
   }, [partners, filter, search, sortKey, sortDir])
 
+  // Summary stats
+  const activeCount = partners.filter(p => p.status === 'active').length
+  const sampleCount = partners.filter(p => p.status === 'sample_sent').length
+  const totalKg = partners.reduce((s, p) => s + (p.combined_kg || 0), 0)
+  const totalRevenue = partners.reduce((s, p) => s + (p.combined_spent || 0), 0)
+
+  function Dash() {
+    return <span className="text-gray-300">—</span>
+  }
+
   function NextOrderCell({ partner }) {
     const urgency = reorderUrgency(partner.next_expected_order)
+    if (!partner.next_expected_order) return <Dash />
     const cls = urgency === 'overdue'
       ? 'text-red-500 font-medium'
       : urgency === 'soon'
       ? 'text-amber-500 font-medium'
       : 'text-gray-500'
-    return <span className={`text-sm ${cls}`}>{formatDate(partner.next_expected_order)}</span>
+    return <span className={`text-sm tabular-nums ${cls}`}>{formatDate(partner.next_expected_order)}</span>
   }
 
+  const thCls = 'text-left text-[10px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 whitespace-nowrap select-none'
+  const thClsR = thCls + ' text-right'
+
   return (
-    <div className="space-y-6 max-w-7xl">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-w-7xl">
+      {/* Page header */}
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Partners</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{partners.length} partners total</p>
+          <p className="text-sm text-gray-400 mt-0.5">{partners.length} partners total</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowEmailModal(true)} className="btn-secondary">
-            <Mail size={15} /> Email List
+            <Mail size={14} /> Email List
           </button>
           <button onClick={() => setModal('add')} className="btn-primary">
-            <Plus size={16} /> Add Partner
+            <Plus size={15} /> Add Partner
           </button>
         </div>
       </div>
@@ -215,11 +228,7 @@ export default function Partners() {
             <p className="text-xs font-semibold text-amber-700 mb-2">⏰ {due.length} cafe{due.length > 1 ? 's' : ''} ready to follow up — marked Not Interested but it's been 3 months:</p>
             <div className="flex flex-wrap gap-2">
               {due.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setModal(p)}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 hover:bg-amber-100 font-medium"
-                >
+                <button key={p.id} onClick={() => setModal(p)} className="text-xs px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 hover:bg-amber-100 font-medium">
                   {p.name}
                 </button>
               ))}
@@ -228,10 +237,25 @@ export default function Partners() {
         )
       })()}
 
-      {/* Filters */}
+      {/* Summary strip */}
+      <div className="grid grid-cols-4 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+        {[
+          { label: 'Active Partners', value: activeCount, green: false },
+          { label: 'Sample Sent', value: sampleCount, green: false },
+          { label: 'Total KG Shipped', value: `${totalKg.toFixed(0)} kg`, green: false },
+          { label: 'Total Revenue', value: formatCurrency(totalRevenue), green: true },
+        ].map(({ label, value, green }) => (
+          <div key={label} className="bg-white px-5 py-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</p>
+            <p className={`text-lg font-bold mt-0.5 tabular-nums ${green ? 'text-[#3D6034]' : 'text-gray-900'}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter bar */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             className="input pl-8 w-56"
             placeholder="Search partners…"
@@ -239,7 +263,7 @@ export default function Partners() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {STATUSES.map(s => (
             <button
               key={s}
@@ -262,86 +286,113 @@ export default function Partners() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100">
-                {[
-                  { label: 'Partner',      key: 'name' },
-                  { label: 'Status',       key: null },
-                  { label: 'Price/KG',     key: 'price_per_kg' },
-                  { label: 'Orders',       key: 'total_orders' },
-                  { label: 'Total KG',     key: 'total_kg' },
-                  { label: 'Total Spent',  key: 'total_spent' },
-                  { label: 'Last Order',   key: 'last_order' },
-                  { label: 'Next Order',   key: 'next_order' },
-                  { label: 'Added',        key: 'created_at' },
-                  { label: '',             key: null },
-                ].map(({ label, key }) => (
-                  <th
-                    key={label}
-                    onClick={() => key && handleSort(key)}
-                    className={`text-left text-[10px] font-semibold uppercase tracking-wider px-4 py-3 whitespace-nowrap select-none ${
-                      key ? 'cursor-pointer hover:text-gray-600 text-gray-400' : 'text-gray-400'
-                    } ${sortKey === key ? 'text-[#3D6034]' : ''}`}
-                  >
-                    {label}{key && <SortIcon col={key} />}
-                  </th>
-                ))}
+                <th className={thCls} style={{ minWidth: 200 }} onClick={() => handleSort('name')} style={{ cursor: 'pointer', minWidth: 200 }}>
+                  Partner <SortIcon col="name" />
+                </th>
+                <th className={thCls}>Status</th>
+                <th className={thClsR} style={{ cursor: 'pointer' }} onClick={() => handleSort('price_per_kg')}>
+                  Price/kg <SortIcon col="price_per_kg" />
+                </th>
+                <th className={thClsR} style={{ cursor: 'pointer' }} onClick={() => handleSort('total_orders')}>
+                  Orders <SortIcon col="total_orders" />
+                </th>
+                <th className={thClsR} style={{ cursor: 'pointer' }} onClick={() => handleSort('total_kg')}>
+                  Total KG <SortIcon col="total_kg" />
+                </th>
+                <th className={thClsR} style={{ cursor: 'pointer' }} onClick={() => handleSort('total_spent')}>
+                  Total Spent <SortIcon col="total_spent" />
+                </th>
+                <th className={thCls} style={{ cursor: 'pointer' }} onClick={() => handleSort('last_order')}>
+                  Last Order <SortIcon col="last_order" />
+                </th>
+                <th className={thCls} style={{ cursor: 'pointer' }} onClick={() => handleSort('next_order')}>
+                  Next Order <SortIcon col="next_order" />
+                </th>
+                <th className={thCls} style={{ cursor: 'pointer' }} onClick={() => handleSort('created_at')}>
+                  Added <SortIcon col="created_at" />
+                </th>
+                <th className={thCls}></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
+                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">Loading…</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">No partners found</td></tr>
               ) : filtered.map(p => (
-                <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 group">
-                  <td className="px-4 py-3.5 min-w-[180px]">
-                    <button
-                      onClick={() => navigate(`/partners/${p.id}`)}
-                      className="w-full text-left group/name"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-900 group-hover/name:text-[#3D6034] transition-colors leading-tight">
-                          {p.name}
-                        </span>
-                        {p.preferred_sku && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0" style={{ background: '#1C2118', color: '#F6F8F5', letterSpacing: '0.3px' }}>
-                            {SKU_LABELS[p.preferred_sku] || p.preferred_sku}
-                          </span>
-                        )}
+                <tr key={p.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 group transition-colors">
+                  {/* Name */}
+                  <td className="px-4 py-3.5">
+                    <button onClick={() => navigate(`/partners/${p.id}`)} className="w-full text-left">
+                      <div className="text-sm font-semibold text-gray-900 group-hover:text-[#3D6034] transition-colors leading-snug">
+                        {p.name}
                       </div>
                       {p.contact_name && (
-                        <p className="text-xs text-gray-400 mt-0.5">{p.contact_name}</p>
+                        <div className="text-xs text-gray-400 mt-0.5">{p.contact_name}</div>
                       )}
                     </button>
                   </td>
+                  {/* Status */}
                   <td className="px-4 py-3.5">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_COLORS[p.status]}`}>
-                      {STATUS_LABELS[p.status]}
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[p.status] || 'bg-gray-100 text-gray-500'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[p.status] || 'bg-gray-400'}`} />
+                      {STATUS_LABELS[p.status] || p.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-sm text-gray-600 tabular-nums">{p.price_per_kg ? formatCurrency(p.price_per_kg) : <span className="text-gray-300">—</span>}</td>
-                  <td className="px-4 py-3.5 text-sm font-semibold text-gray-900 tabular-nums">{p.combined_orders || <span className="text-gray-300 font-normal">0</span>}</td>
-                  <td className="px-4 py-3.5 text-sm font-semibold text-gray-900 tabular-nums">{p.combined_kg ? `${Number(p.combined_kg).toFixed(1)} kg` : <span className="text-gray-300 font-normal">—</span>}</td>
-                  <td className="px-4 py-3.5 text-sm font-semibold text-[#3D6034] tabular-nums">
-                    {p.combined_spent ? formatCurrency(p.combined_spent) : <span className="text-gray-300 font-normal">—</span>}
+                  {/* Price/kg */}
+                  <td className="px-4 py-3.5 text-right">
+                    {p.price_per_kg
+                      ? <span className="text-sm text-gray-600 tabular-nums">{formatCurrency(p.price_per_kg)}</span>
+                      : <Dash />}
                   </td>
-                  <td className="px-4 py-3.5 text-sm text-gray-500">{formatDate(p.combined_last_order) || <span className="text-gray-300">—</span>}</td>
+                  {/* Orders */}
+                  <td className="px-4 py-3.5 text-right">
+                    {p.combined_orders > 0
+                      ? <span className="text-sm font-semibold text-gray-900 tabular-nums">{p.combined_orders}</span>
+                      : <span className="text-sm text-gray-300">0</span>}
+                  </td>
+                  {/* Total KG */}
+                  <td className="px-4 py-3.5 text-right">
+                    {p.combined_kg > 0
+                      ? <span className="text-sm font-semibold text-gray-900 tabular-nums">{Number(p.combined_kg).toFixed(1)} kg</span>
+                      : <Dash />}
+                  </td>
+                  {/* Total Spent */}
+                  <td className="px-4 py-3.5 text-right">
+                    {p.combined_spent > 0
+                      ? <span className="text-sm font-semibold text-[#3D6034] tabular-nums">{formatCurrency(p.combined_spent)}</span>
+                      : <Dash />}
+                  </td>
+                  {/* Last Order */}
+                  <td className="px-4 py-3.5">
+                    {p.combined_last_order
+                      ? <span className="text-sm text-gray-500 tabular-nums">{formatDate(p.combined_last_order)}</span>
+                      : <Dash />}
+                  </td>
+                  {/* Next Order */}
                   <td className="px-4 py-3.5"><NextOrderCell partner={p} /></td>
-                  <td className="px-4 py-3.5 text-sm text-gray-400">{formatDate((p.joined_date || p.created_at || '').slice(0, 10)) || <span className="text-gray-300">—</span>}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
+                  {/* Added */}
+                  <td className="px-4 py-3.5">
+                    {(p.joined_date || p.created_at)
+                      ? <span className="text-sm text-gray-400 tabular-nums">{formatDate((p.joined_date || p.created_at || '').slice(0, 10))}</span>
+                      : <Dash />}
+                  </td>
+                  {/* Actions */}
+                  <td className="px-4 py-3.5">
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => setModal(p)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                         title="Edit"
                       >
-                        <Pencil size={14} />
+                        <Pencil size={13} />
                       </button>
                       <button
                         onClick={() => setConfirmDelete(p)}
                         className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                         title="Delete"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </td>
@@ -377,14 +428,8 @@ export default function Partners() {
           `"${p.name}","${p.email}","${p.status}"`
         ).join('\n')
 
-        function copyAll() {
-          navigator.clipboard.writeText(emailsOnly)
-          toast.success(`${withEmail.length} emails copied`)
-        }
-        function copyActive() {
-          navigator.clipboard.writeText(activeEmails.map(p => p.email).join(', '))
-          toast.success(`${activeEmails.length} active partner emails copied`)
-        }
+        function copyAll() { navigator.clipboard.writeText(emailsOnly); toast.success(`${withEmail.length} emails copied`) }
+        function copyActive() { navigator.clipboard.writeText(activeEmails.map(p => p.email).join(', ')); toast.success(`${activeEmails.length} active partner emails copied`) }
         function downloadCsv() {
           const blob = new Blob([csvContent], { type: 'text/csv' })
           const a = document.createElement('a')
@@ -406,7 +451,6 @@ export default function Partners() {
                 </button>
               </div>
 
-              {/* Missing emails alert */}
               {activeNoEmail.length > 0 && (
                 <div className="mx-4 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                   <p className="text-xs font-semibold text-amber-700">⚠ {activeNoEmail.length} active partners missing an email:</p>
@@ -448,20 +492,16 @@ export default function Partners() {
                     </tr>
                   </thead>
                   <tbody>
-                    {withEmail.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                    {withEmail.sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                       <tr key={p.id} className="border-b border-gray-50 last:border-0">
                         <td className="py-2 text-xs font-medium text-gray-800 pr-3">{p.name}</td>
                         <td className="py-2 text-xs text-gray-500">{p.email}</td>
                         <td className="py-2">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                            p.status === 'active' ? 'bg-[#EEF3EC] text-[#3D6034]' :
-                            p.status === 'sample_sent' ? 'bg-purple-100 text-purple-700' :
-                            'bg-gray-100 text-gray-500'
-                          }`}>{p.status}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_BADGE[p.status] || 'bg-gray-100 text-gray-500'}`}>{p.status}</span>
                         </td>
                       </tr>
                     ))}
-                    {activeNoEmail.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                    {activeNoEmail.sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                       <tr key={p.id} className="border-b border-gray-50 last:border-0 bg-amber-50/40">
                         <td className="py-2 text-xs font-medium text-gray-700 pr-3">{p.name}</td>
                         <td className="py-2 text-xs text-amber-500 italic">no email — add in profile</td>
