@@ -265,15 +265,8 @@ kyosmatcha.com`
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, Math.min(imgHeight, pageHeight))
       const pdfBlob = pdf.output('blob')
 
-      // Upload PDF to Supabase Storage
-      const partnerSlug = (selectedPartner?.name || billTo.name || '').replace(/[^a-zA-Z0-9]/g, '').trim()
-      const filename = `${partnerSlug ? partnerSlug + '_' : ''}${invoiceNumber}.pdf`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('invoices')
-        .upload(filename, pdfBlob, { contentType: 'application/pdf', upsert: true })
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage.from('invoices').getPublicUrl(filename)
+      // Download PDF directly — no longer uploaded to Supabase Storage
+      pdf.save(`${invoiceNumber}.pdf`)
 
       // Save order
       const lineItemsClean = lineItems.map(({ id, ...rest }) => rest)
@@ -286,7 +279,6 @@ kyosmatcha.com`
         subtotal,
         total,
         status: 'unpaid',
-        invoice_pdf_url: publicUrl,
       })
       if (orderError) throw orderError
 
