@@ -265,8 +265,27 @@ kyosmatcha.com`
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, Math.min(imgHeight, pageHeight))
       const pdfBlob = pdf.output('blob')
 
-      // Download PDF directly — no longer uploaded to Supabase Storage
+      // Download PDF to user's computer
       pdf.save(`${invoiceNumber}.pdf`)
+
+      // Send PDF to Apps Script → Google Drive (fire and forget)
+      const { data: settings } = await supabase.from('settings').select('sheets_sync_url').eq('id', 1).single()
+      if (settings?.sheets_sync_url) {
+        const pdfBase64 = pdf.output('datauristring') // base64 data URI
+        fetch(settings.sheets_sync_url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'save_invoice',
+            invoice_number: invoiceNumber,
+            partner_name: selectedPartner.name,
+            date: invoiceDate,
+            total,
+            pdf_base64: pdfBase64,
+          }),
+        }).catch(() => {})
+      }
 
       // Save order
       const lineItemsClean = lineItems.map(({ id, ...rest }) => rest)
@@ -307,7 +326,6 @@ kyosmatcha.com`
         toast.success(`${selectedPartner.name} promoted to Active! 🎉`, { duration: 4000 })
       }
 
-      setSavedPdfUrl(publicUrl)
       toast.success(`Invoice ${invoiceNumber} saved!`)
       syncToSheets()
       deductInventoryForOrder({ invoice_number: invoiceNumber, line_items: lineItemsClean })
