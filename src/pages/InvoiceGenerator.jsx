@@ -255,7 +255,7 @@ kyosmatcha.com`
     setSaving(true)
     try {
       // Generate PDF from preview
-      const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const canvas = await html2canvas(previewRef.current, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' })
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       const pageWidth = pdf.internal.pageSize.getWidth()
@@ -274,8 +274,6 @@ kyosmatcha.com`
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage.from('invoices').getPublicUrl(filename)
-
-      pdf.save(`${invoiceNumber}.pdf`)
 
       // Save order
       const lineItemsClean = lineItems.map(({ id, ...rest }) => rest)
