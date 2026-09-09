@@ -265,27 +265,17 @@ kyosmatcha.com`
       pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, Math.min(imgHeight, pageHeight))
       const pdfBlob = pdf.output('blob')
 
-      // Download PDF to user's computer
-      pdf.save(`${invoiceNumber}.pdf`)
+      // Upload PDF to Supabase Storage
+      const partnerSlug = (selectedPartner?.name || billTo.name || '').replace(/[^a-zA-Z0-9]/g, '').trim()
+      const filename = `${partnerSlug ? partnerSlug + '_' : ''}${invoiceNumber}.pdf`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('invoices')
+        .upload(filename, pdfBlob, { contentType: 'application/pdf', upsert: true })
+      if (uploadError) throw uploadError
 
-      // Send PDF to Apps Script → Google Drive (fire and forget)
-      const { data: settings } = await supabase.from('settings').select('sheets_sync_url').eq('id', 1).single()
-      if (settings?.sheets_sync_url) {
-        const pdfBase64 = pdf.output('datauristring') // base64 data URI
-        fetch(settings.sheets_sync_url, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            action: 'save_invoice',
-            invoice_number: invoiceNumber,
-            partner_name: selectedPartner.name,
-            date: invoiceDate,
-            total,
-            pdf_base64: pdfBase64,
-          }),
-        }).catch(() => {})
-      }
+      const { data: { publicUrl } } = supabase.storage.from('invoices').getPublicUrl(filename)
+
+      pdf.save(`${invoiceNumber}.pdf`)
 
       // Save order
       const lineItemsClean = lineItems.map(({ id, ...rest }) => rest)
@@ -298,6 +288,7 @@ kyosmatcha.com`
         subtotal,
         total,
         status: 'unpaid',
+        invoice_pdf_url: publicUrl,
       })
       if (orderError) throw orderError
 
@@ -326,6 +317,7 @@ kyosmatcha.com`
         toast.success(`${selectedPartner.name} promoted to Active! 🎉`, { duration: 4000 })
       }
 
+      setSavedPdfUrl(publicUrl)
       toast.success(`Invoice ${invoiceNumber} saved!`)
       syncToSheets()
       deductInventoryForOrder({ invoice_number: invoiceNumber, line_items: lineItemsClean })
