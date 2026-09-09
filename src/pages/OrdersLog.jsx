@@ -5,7 +5,7 @@ import { syncToSheets } from '../lib/sheetsSync'
 import { formatCurrency, formatDate, getOrderStatus, lineItemKg } from '../lib/utils'
 import { restoreInventoryForOrder } from '../lib/inventory'
 import { format, addDays, subMonths, startOfMonth, endOfMonth } from 'date-fns'
-import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2, ExternalLink } from 'lucide-react'
+import { Search, Download, CheckCircle, XCircle, Trash2, ChevronUp, ChevronDown, Pencil, Eye, X, Package, ShoppingBag, StickyNote, FilePlus, CheckCircle2, ExternalLink, PackagePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import EditInvoiceModal from '../components/EditInvoiceModal'
 
@@ -269,6 +269,32 @@ export default function OrdersLog() {
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [load])
+
+  async function addToPack(order) {
+    // Check if already in order_inbox
+    const { data: existing } = await supabase
+      .from('order_inbox')
+      .select('id')
+      .eq('email_id', `crm-${order.id}`)
+      .single()
+    if (existing) { toast('Already in Orders to Pack', { icon: '📦' }); return }
+
+    const kg = (order.line_items || []).reduce((s, li) => s + lineItemKg(li), 0)
+    const { error } = await supabase.from('order_inbox').insert({
+      email_id: `crm-${order.id}`,
+      received_at: new Date().toISOString(),
+      from_email: 'crm',
+      from_name: order.partner_name,
+      subject: `Order ${order.invoice_number}`,
+      parsed_partner: order.partner_name,
+      parsed_product: (order.line_items || []).map(li => `${li.qty}x ${li.desc}`).join(', '),
+      parsed_quantity_kg: kg || null,
+      parsed_notes: `Added from CRM — invoice ${order.invoice_number}`,
+      status: 'pending',
+    })
+    if (error) { toast.error(error.message); return }
+    toast.success(`${order.invoice_number} added to Orders to Pack`)
+  }
 
   async function snoozeTopending(order) {
     const snoozedUntil = format(addDays(new Date(), 30), 'yyyy-MM-dd')
@@ -574,6 +600,13 @@ export default function OrdersLog() {
                             <Download size={12} />
                           </a>
                         )}
+                        <button
+                          onClick={() => addToPack(order)}
+                          className="inline-flex items-center gap-1 text-xs text-purple-600 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-lg hover:bg-purple-100 transition-colors whitespace-nowrap font-medium"
+                          title="Add to Orders to Pack"
+                        >
+                          <PackagePlus size={12} /> Pack
+                        </button>
                       </div>
                     </td>
                     <td className="px-5 py-3">
