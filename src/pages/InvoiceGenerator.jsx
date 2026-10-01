@@ -423,7 +423,7 @@ kyosmatcha.com`
           <div className="space-y-2">
             {lineItems.map(item => (
               <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                {['Premium Matcha A', 'Premium Matcha AAA', 'Matcha Tin 30g', 'Matcha Tin 50g', 'Matcha Tin 100g', 'Retail 30g Ceremonial Matcha', 'Bamboo Whisk (Chasen)', 'Matcha Spoon', 'Matcha Starter Kit', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit', 'Retail Shelf (Free of Charge)'].includes(item.desc) || item.desc === '' ? (
+                {['Premium Matcha A', 'Premium Matcha AAA', 'Matcha Tin 30g', 'Matcha Tin 50g', 'Matcha Tin 100g', 'Premium Matcha A (30g Retail)', 'Bamboo Whisk (Chasen)', 'Matcha Spoon', 'Matcha Starter Kit', 'Royal Mail Shipping Fee', 'Retail Pouch 50g', 'Starter Kit', 'Retail Shelf (Free of Charge)'].includes(item.desc) || item.desc === '' ? (
                   <select
                     className="input col-span-5 text-xs"
                     value={item.desc}
@@ -437,7 +437,7 @@ kyosmatcha.com`
                         if (val === 'Matcha Tin 30g') updateItem(item.id, 'price', 8.35)
                         if (val === 'Matcha Tin 50g') updateItem(item.id, 'price', 11.25)
                         if (val === 'Matcha Tin 100g') updateItem(item.id, 'price', 18.50)
-                        if (val === 'Retail 30g Ceremonial Matcha') updateItem(item.id, 'price', 11)
+                        if (val === 'Premium Matcha A (30g Retail)') updateItem(item.id, 'price', 11)
                         if (val === 'Bamboo Whisk (Chasen)') updateItem(item.id, 'price', 6)
                         if (val === 'Matcha Spoon') updateItem(item.id, 'price', 4)
                         if (val === 'Matcha Starter Kit') updateItem(item.id, 'price', 11)
@@ -456,7 +456,7 @@ kyosmatcha.com`
                     </optgroup>
                     <optgroup label="Retail Items">
                       <option value="Retail Pouch 50g">Retail Pouch 50g</option>
-                      <option value="Retail 30g Ceremonial Matcha">Retail 30g Ceremonial Matcha</option>
+                      <option value="Premium Matcha A (30g Retail)">Premium Matcha A (30g Retail)</option>
                       <option value="Bamboo Whisk (Chasen)">Bamboo Whisk (Chasen)</option>
                       <option value="Matcha Spoon">Matcha Spoon</option>
                       <option value="Matcha Starter Kit">Matcha Starter Kit</option>
@@ -551,7 +551,7 @@ kyosmatcha.com`
               + Retail Pouch 50g
             </button>
             <button
-              onClick={() => setLineItems(i => [...i, newItem('Retail 30g Ceremonial Matcha', 1, 11)])}
+              onClick={() => setLineItems(i => [...i, newItem('Premium Matcha A (30g Retail)', 1, 11)])}
               className="flex items-center gap-1 text-xs bg-[#EEF3EC] text-[#3D6034] hover:bg-[#dce8d8] px-2 py-1 rounded-md font-medium transition-colors"
             >
               + Retail 30g
