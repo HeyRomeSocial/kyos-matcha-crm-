@@ -34,7 +34,7 @@ export function reorderUrgency(nextExpectedOrder) {
 export function lineItemKg(li) {
   const desc = (li.desc || '').toLowerCase()
   // Tins — count by their actual weight, not qty-as-kg
-  if (desc.includes('tin 30g') || desc.includes('30g ceremonial')) return (Number(li.qty) || 0) * 0.03
+  if (desc.includes('tin 30g') || desc.includes('30g ceremonial') || desc.includes('30g retail')) return (Number(li.qty) || 0) * 0.03
   if (desc.includes('tin 50g')) return (Number(li.qty) || 0) * 0.05
   if (desc.includes('tin 100g')) return (Number(li.qty) || 0) * 0.1
   // Retail pouches = 50g each
