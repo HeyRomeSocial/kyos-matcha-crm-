@@ -1,0 +1,289 @@
+{
+  "month_label": "September 2026",
+  "compare_label": "August 2026",
+  "subtitle": "Fifth reporting period — compared against August 2026",
+  "headline": [
+    [
+      "Total B2B revenue (paid)",
+      "£23,963",
+      "£15,132",
+      "−£8,831",
+      "−37%",
+      false
+    ],
+    [
+      "Volume sold",
+      "204.05 kg",
+      "134.8 kg",
+      "−69.25 kg",
+      "−34%",
+      false
+    ],
+    [
+      "Total orders (invoices)",
+      "77",
+      "60",
+      "−17",
+      "−22%",
+      false
+    ],
+    [
+      "Active café accounts",
+      "54",
+      "41",
+      "−13",
+      "−24%",
+      false
+    ],
+    [
+      "New accounts onboarded",
+      "14",
+      "3",
+      "−11",
+      "−79%",
+      false
+    ]
+  ],
+  "headline_footnote": "Revenue is paid-only per the CRM; £3,194 of September invoices (13 of 60) are still unpaid, so invoiced total was £18,326 (−27%). August kg includes KM-349 (52.5kg logged alongside 50 retail pouches), which looks anomalous.",
+  "derived": [
+    [
+      "Average order value (AOV, paid)",
+      "£320",
+      "£322",
+      "+£2",
+      "+1%",
+      true
+    ],
+    [
+      "Average selling price / kg *",
+      "£123",
+      "£136",
+      "+£13",
+      "+10%",
+      true
+    ],
+    [
+      "Average volume / order",
+      "2.65 kg",
+      "2.25 kg",
+      "−0.40 kg",
+      "−15%",
+      false
+    ],
+    [
+      "Orders per active café",
+      "1.43",
+      "1.46",
+      "+0.03",
+      "+3%",
+      true
+    ],
+    [
+      "Revenue per active café *",
+      "£465",
+      "£447",
+      "−£18",
+      "−4%",
+      false
+    ],
+    [
+      "Prior-month cafés that reordered",
+      "54% (25/46)",
+      "46% (25/54)",
+      "−8 pts",
+      "—",
+      false
+    ],
+    [
+      "New-account share of active base",
+      "25.9%",
+      "7.3%",
+      "−18.6 pts",
+      "—",
+      false
+    ],
+    [
+      "Unpaid share of invoiced value",
+      "4.7%",
+      "17.4%",
+      "+12.7 pts",
+      "—",
+      false
+    ]
+  ],
+  "derived_footnote": "* Invoiced basis (paid + unpaid), so price and kg are measured on the same invoices. New accounts verified via Raw Partners (Hist Orders = 0, added to CRM ≤14 days before month start); 2 reactivated + 1 unconfirmed excluded.",
+  "performance_statement": "September was a down month: paid revenue fell 37% to £15,132 and volume 34% to 134.8kg, across 41 active cafés (−24%) and 60 invoices. Some of the drop is the comparison. August's kg includes one Sunday Coffee invoice (KM-349) logging 52.5kg next to 50 retail pouches, which looks like a data-entry issue. Excluding it, kg fell 11%. Some is timing too: £3,194 is still unpaid, mostly from the last week. Per-café numbers held up. AOV was steady at £322, orders per café rose slightly and price/kg rose 10%. The real problem is the funnel. Zero samples went out, only 4 partners were added and just 3 genuinely new cafés ordered. Only 46% of August's cafés reordered. September shipped 42% of its 324kg target.",
+  "net_summary": "a soft month where existing customers still ordered at healthy value, but the new-business pipeline stalled and the gap to the kg target is now large.",
+  "insights": [
+    {
+      "tone": "down",
+      "title": "Acquisition stalled",
+      "body": "0 samples sent, 4 partners added and 3 verified new cafés (vs 28 / 38 / 14 in August). The drop in active cafés follows directly."
+    },
+    {
+      "tone": "warn",
+      "title": "August's kg is likely overstated",
+      "body": "KM-349 (Sunday Coffee) logs 52.5kg next to 50 retail pouches for £1,494.50, which looks like pouches entered as kg. Excluding it, kg fell 11% (151.6 → 134.8), not 34%."
+    },
+    {
+      "tone": "up",
+      "title": "Order quality held",
+      "body": "AOV £322 (flat), orders per café 1.46 (up slightly) and price/kg up 10%. Cafés that ordered still ordered at good value."
+    },
+    {
+      "tone": "users",
+      "title": "Reorders are slipping",
+      "body": "Only 25 of August's 54 cafés reordered in September (46%, vs 54% Jul→Aug). 57 cafés that have ever ordered are now 30+ days quiet."
+    },
+    {
+      "tone": "warn",
+      "title": "Unpaid balance building",
+      "body": "£3,194 (17% of invoiced value) is unpaid, mostly invoiced 23–30 Sept. Likely timing, but it's the highest share so far. Chase it in the first week of October."
+    }
+  ],
+  "kpi_dashboard_note": "August vs September. Margin, reorder rate and churn rows unlock once the data-capture items are in place.",
+  "kpi_dashboard": [
+    [
+      "Revenue (paid)",
+      "£23,963",
+      "£15,132",
+      "−37%",
+      "down — partly unpaid timing",
+      false
+    ],
+    [
+      "Volume (kg)",
+      "204.05",
+      "134.8",
+      "−34%",
+      "−11% excl. KM-349",
+      false
+    ],
+    [
+      "Kg vs monthly target",
+      "77% (266)",
+      "42% (324)",
+      "—",
+      "gap widening",
+      false
+    ],
+    [
+      "Active accounts",
+      "54",
+      "41",
+      "−24%",
+      "down",
+      false
+    ],
+    [
+      "New accounts",
+      "14",
+      "3",
+      "−79%",
+      "pipeline stalled",
+      false
+    ],
+    [
+      "AOV",
+      "£320",
+      "£322",
+      "+1%",
+      "stable",
+      true
+    ],
+    [
+      "Avg price / kg",
+      "£123",
+      "£136",
+      "+10%",
+      "up — Aug diluted by KM-349",
+      true
+    ],
+    [
+      "Orders / active café",
+      "1.43",
+      "1.46",
+      "+3%",
+      "stable",
+      true
+    ],
+    [
+      "Prior-month reorder rate",
+      "54%",
+      "46%",
+      "—",
+      "watch closely",
+      false
+    ],
+    [
+      "Gross margin %",
+      "TBC",
+      "TBC",
+      "—",
+      "still not tracked",
+      null
+    ],
+    [
+      "Account churn",
+      "TBC",
+      "TBC",
+      "—",
+      "need data",
+      null
+    ]
+  ],
+  "data_gaps": [
+    [
+      "Cost per kg (COGS) + fulfilment cost",
+      "Confirms whether growth (and bulk deals) is profitable",
+      "1 — Critical"
+    ],
+    [
+      "Order history tagged by account",
+      "Reorder rate, churn, growth quality",
+      "2 — Critical"
+    ],
+    [
+      "New vs returning revenue split",
+      "How much of each month's change came from new vs existing",
+      "3 — High"
+    ]
+  ],
+  "definitions": [
+    [
+      "Revenue",
+      "Net of VAT/refunds; counted on order date within the calendar month."
+    ],
+    [
+      "Active account",
+      "A café that placed ≥1 paid order in the month."
+    ],
+    [
+      "Onboarded / new account",
+      "First-ever paid order fell in this month."
+    ],
+    [
+      "Volume",
+      "Total kg of matcha shipped/invoiced in the month."
+    ]
+  ],
+  "recommendations_intro": "Grounded in this month's numbers, not generic advice.",
+  "recommendations": [
+    {
+      "title": "Work the 114-café sample backlog now",
+      "body": "114 partners sit at 'sample sent', nearly 3x September's 41 active cafés, and 76 were sampled in Jul–Aug. With no new samples going out, converting this pool is the fastest route to new accounts. A follow-up call or WhatsApp to each in October costs little."
+    },
+    {
+      "title": "Run a reorder sweep on the 57 quiet cafés",
+      "body": "57 cafés that have ordered before are 30+ days quiet, and only 46% of August's buyers came back. Start with Sunday Coffee: £1,457 orders on 29 Jun and 3 Aug, but nothing in September. A reminder 3–4 weeks after each café's last order would protect the base."
+    },
+    {
+      "title": "Restart top-of-funnel outreach",
+      "body": "Partners added fell from 38 to 4 and samples from 28 to 0. October's target is 382kg, nearly 3x September's actual. Set a weekly floor (e.g. 10 new samples) so the pipeline doesn't run dry again."
+    },
+    {
+      "title": "Fix the KM-349 entry, then capture margin",
+      "body": "Confirm whether KM-349's 52.5kg is really pouches. If it is, August kg and price/kg need restating. Then capture cost per kg so bulk and retail-pouch orders can be judged on profit, not just volume."
+    }
+  ]
+}

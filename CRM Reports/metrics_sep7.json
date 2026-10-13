@@ -1,0 +1,129 @@
+{
+  "period_start": "2026-08-31",
+  "period_end": "2026-09-06",
+  "month_label": "September 2026",
+  "revenue": 4896,
+  "revenue_paid": 1959,
+  "revenue_unpaid": 2937,
+  "revenue_overdue": 0,
+  "kg_sold": 31.5,
+  "orders": 16,
+  "aov": 306.0,
+  "active_accounts_week": 15,
+  "active_accounts_month": 15,
+  "total_active_accounts_alltime": 84,
+  "orders_month": 17,
+  "kg_sold_month": 33.65,
+  "revenue_month": 5331.5,
+  "revenue_month_paid": 2039,
+  "revenue_month_unpaid": 3292.5,
+  "new_accounts_onboarded": [
+    "WE ARE LARDER, CARELTON (pending confirmation)",
+    "TheMatchaMam (pending confirmation)",
+    "Veloce Coffee (pending confirmation)"
+  ],
+  "new_accounts_count": 3,
+  "reactivated_onboarded": [],
+  "reactivated_count": 0,
+  "samples_sent_new_count": 0,
+  "total_sample_sent_alltime": 115,
+  "top_partners_by_revenue": [
+    { "name": "WE ARE LARDER, CARELTON", "orders": 2, "revenue": 1200 },
+    { "name": "Chiya Cafe", "orders": 1, "revenue": 537 },
+    { "name": "Lookumades, Canterbury", "orders": 1, "revenue": 369.5 },
+    { "name": "Ours Cafe, Liverpool", "orders": 1, "revenue": 307 },
+    { "name": "At Belle's", "orders": 1, "revenue": 297 }
+  ],
+  "top_partners_this_month": [
+    { "name": "WE ARE LARDER, CARELTON", "orders": 2, "revenue": 1200 },
+    { "name": "Chiya Cafe", "orders": 1, "revenue": 537 },
+    { "name": "KOVA CAFE", "orders": 1, "revenue": 457 },
+    { "name": "HER DAYS Cafe", "orders": 1, "revenue": 442 },
+    { "name": "Lookumades, Canterbury", "orders": 1, "revenue": 369.5 }
+  ],
+  "at_risk": [
+    { "name": "KITH, LEICESTER", "last_order_date": "2026-06-15", "days": 84 },
+    { "name": "Forrest Coffee, Warwickshire", "last_order_date": "2026-06-15", "days": 84 },
+    { "name": "Village Bakery", "last_order_date": "2026-06-16", "days": 83 },
+    { "name": "Chiya, Canterbury", "last_order_date": "2026-06-16", "days": 83 },
+    { "name": "Roots, London", "last_order_date": "2026-06-17", "days": 82 },
+    { "name": "Ours, Faversham", "last_order_date": "2026-06-17", "days": 82 },
+    { "name": "With Milk Cafe", "last_order_date": "2026-06-22", "days": 77 },
+    { "name": "Jenna Armitage", "last_order_date": "2026-06-22", "days": 77 }
+  ],
+  "wow": {
+    "revenue_prior": 4234,
+    "revenue_pct": 15.6,
+    "orders_prior": 14,
+    "orders_pct": 14.3,
+    "kg_prior": 28.55,
+    "kg_pct": 10.3,
+    "active_prior": 14,
+    "active_pct": 7.1
+  },
+  "goal": {
+    "month_label": "September 2026",
+    "target_kg": 324,
+    "mtd_kg": 33.65,
+    "pct": 10.4,
+    "remaining_kg": 290.35,
+    "note": "Only 7 days into September with 33.65kg shipped (10.4% of the 324kg floor) — at the current ~4.8kg/day pace that's roughly 144kg for the month, well short of target. Hitting the floor needs about 12.6kg/day for the remaining 23 days, roughly 2.6x the current rate.",
+    "prior_month_kg": 266,
+    "prior_month_label": "August 2026",
+    "prior_month_basis": "target",
+    "increment_kg": 58,
+    "goal_reached": false
+  },
+  "target_ladder": [
+    { "month": "June 2026", "target_kg": 150, "actual_kg": 150.5 },
+    { "month": "July 2026", "target_kg": 208, "actual_kg": 134.75 },
+    { "month": "August 2026", "target_kg": 266, "actual_kg": 204.05 },
+    { "month": "September 2026", "target_kg": 324, "actual_kg": 33.65, "in_progress": true },
+    { "month": "October 2026", "target_kg": 382 },
+    { "month": "November 2026", "target_kg": 440 },
+    { "month": "December 2026", "target_kg": 498 },
+    { "month": "January 2027", "target_kg": 556 },
+    { "month": "February 2027", "target_kg": 614 },
+    { "month": "March 2027", "target_kg": 672 }
+  ],
+  "vision_summary": "At the +58kg/month pace, monthly shipments reach 672 kg by March 2027 — about 6 months from now, roughly 4.5x June 2026's 150.5 kg anchor.",
+  "insights_intro": "Grounded in this week's and this month's actual CRM numbers — what's working and what needs attention.",
+  "insights": [
+    {
+      "tone": "info",
+      "icon": "info",
+      "title": "Outstanding is a bigger share than usual, but nothing's overdue",
+      "body": "£2,937 outstanding on £4,896 invoiced this week (60%) is a larger share than typical, but none of it is 30+ days overdue yet — this is about the trend, not a verdict. Worth a light nudge on the newer unpaid invoices before they age."
+    },
+    {
+      "tone": "warn",
+      "icon": "target",
+      "title": "September is 10.4% toward its 324kg floor after 7 days",
+      "body": "33.65kg shipped so far at ~4.8kg/day would land around 144kg for the month. Hitting the 324kg floor needs ~12.6kg/day for the remaining 23 days — about 2.6x the current pace. Repeat volume from this week's top accounts (WE ARE LARDER, Chiya Cafe, KOVA CAFE) is the fastest lever."
+    },
+    {
+      "tone": "info",
+      "icon": "bulb",
+      "title": "Neither July nor August has cleared its own floor yet",
+      "body": "July shipped 134.75kg against a 208kg target and August shipped 204.05kg against 266kg — though August's volume grew 51% month-over-month per the CRM. The +58kg/month step is currently outpacing actual growth, worth watching if September narrows that gap."
+    },
+    {
+      "tone": "warn",
+      "icon": "warn",
+      "title": "8 cafés have gone quiet since the CRM's first two weeks",
+      "body": "KITH Leicester, Forrest Coffee Warwickshire, Village Bakery, Chiya Canterbury, Roots London, Ours Faversham, With Milk Cafe and Jenna Armitage last ordered 77-84 days ago, all in mid-June — a cluster worth a dedicated re-engagement push. This list is partial since visible order history starts 2026-06-10."
+    },
+    {
+      "tone": "users",
+      "icon": "heart",
+      "title": "WE ARE LARDER, CARELTON is this week's and this month's top account",
+      "body": "Two 4kg orders placed the same day (£1,200 total) — the strongest single-day volume from any partner this week. Worth a personal thank-you call to help lock in the reorder habit."
+    },
+    {
+      "tone": "info",
+      "icon": "info",
+      "title": "This week's 3 new-account count is unverified",
+      "body": "The Weekly Log's own New Accounts column reads 3. Cross-checking Raw Partners confirmed the other 12 active cafés this week all have prior order history (not new). WE ARE LARDER, TheMatchaMam and Veloce Coffee fall past the Raw Partners sheet's readable range (truncates around 'M' alphabetically), so their new-vs-existing status genuinely can't be confirmed this run — flagged as pending rather than asserted."
+    }
+  ]
+}

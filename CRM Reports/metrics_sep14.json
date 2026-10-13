@@ -1,0 +1,127 @@
+{
+  "period_start": "2026-09-14",
+  "period_end": "2026-09-20",
+  "month_label": "September 2026",
+  "revenue": 2202,
+  "revenue_paid": 1665,
+  "revenue_unpaid": 537,
+  "revenue_overdue": 0,
+  "kg_sold": 13.5,
+  "orders": 7,
+  "aov": 314.57,
+  "active_accounts_week": 7,
+  "active_accounts_month": 35,
+  "total_active_accounts_alltime": 99,
+  "orders_month": 48,
+  "kg_sold_month": 100.3,
+  "revenue_month": 14328.5,
+  "revenue_month_paid": 11128.0,
+  "revenue_month_unpaid": 3200.5,
+  "new_accounts_onboarded": [
+    "Buttercup Kitchen"
+  ],
+  "new_accounts_count": 1,
+  "reactivated_onboarded": [],
+  "reactivated_count": 0,
+  "samples_sent_new_count": 0,
+  "total_sample_sent_alltime": 97,
+  "top_partners_by_revenue": [
+    { "name": "Buttercup Kitchen", "orders": 1, "revenue": 457 },
+    { "name": "HER DAYS Cafe", "orders": 1, "revenue": 442 },
+    { "name": "KITCHEN COFFEE", "orders": 1, "revenue": 387 },
+    { "name": "Mooch, Nottingham", "orders": 1, "revenue": 307 },
+    { "name": "Matchaa Maker, Devon", "orders": 1, "revenue": 297 }
+  ],
+  "top_partners_this_month": [
+    { "name": "Chiya Cafe", "orders": 3, "revenue": 1386 },
+    { "name": "HER DAYS Cafe", "orders": 3, "revenue": 1326 },
+    { "name": "WE ARE LARDER, CARELTON", "orders": 2, "revenue": 1200 },
+    { "name": "Greenhood Coffee, Nottingham", "orders": 1, "revenue": 872 },
+    { "name": "ACAI&THE TRIBE", "orders": 3, "revenue": 616 }
+  ],
+  "at_risk": [
+    { "name": "Osoto Coffee", "last_order_date": "2026-06-11", "days": 107 },
+    { "name": "Village Bakery", "last_order_date": "2026-06-16", "days": 102 },
+    { "name": "With Milk Cafe", "last_order_date": "2026-06-22", "days": 96 },
+    { "name": "BRUNCH CAFE", "last_order_date": "2026-06-26", "days": 92 },
+    { "name": "GLAZED DONUTS", "last_order_date": "2026-06-30", "days": 88 },
+    { "name": "Matcha Coffe Matcha", "last_order_date": "2026-06-30", "days": 88 },
+    { "name": "Dune Bakery, Edinburgh", "last_order_date": "2026-07-07", "days": 81 },
+    { "name": "Blossoms, Northampton", "last_order_date": "2026-07-09", "days": 79 }
+  ],
+  "wow": {
+    "revenue_prior": 5180,
+    "revenue_pct": -57.5,
+    "orders_prior": 19,
+    "orders_pct": -63.2,
+    "kg_prior": 31.75,
+    "kg_pct": -57.5,
+    "active_prior": 18,
+    "active_pct": -61.1
+  },
+  "goal": {
+    "month_label": "September 2026",
+    "target_kg": 324,
+    "mtd_kg": 100.3,
+    "pct": 31.0,
+    "remaining_kg": 223.7,
+    "note": "26 days into September, 100.3kg shipped (31.0% of the 324kg floor) — at the current ~3.9kg/day pace that's roughly 116kg for the month, well short of target. Closing the full 223.7kg gap in the 4 days left isn't realistic; the fastest lever is repeat volume from this month's top accounts, with the remainder likely carrying into October's push.",
+    "prior_month_kg": 266,
+    "prior_month_label": "August 2026",
+    "prior_month_basis": "target",
+    "increment_kg": 58,
+    "goal_reached": false
+  },
+  "target_ladder": [
+    { "month": "June 2026", "target_kg": 150, "actual_kg": 150.5 },
+    { "month": "July 2026", "target_kg": 208, "actual_kg": 134.75 },
+    { "month": "August 2026", "target_kg": 266, "actual_kg": 204.05 },
+    { "month": "September 2026", "target_kg": 324, "actual_kg": 100.3, "in_progress": true },
+    { "month": "October 2026", "target_kg": 382 },
+    { "month": "November 2026", "target_kg": 440 },
+    { "month": "December 2026", "target_kg": 498 },
+    { "month": "January 2027", "target_kg": 556 },
+    { "month": "February 2027", "target_kg": 614 },
+    { "month": "March 2027", "target_kg": 672 }
+  ],
+  "vision_summary": "At the +58kg/month pace, monthly shipments reach 672.0 kg by March 2027 — about 6 months from now, roughly 4.5x June 2026's 150.5 kg anchor.",
+  "insights_intro": "Grounded in this week's and this month's actual CRM numbers — what's working and what needs attention. Note: the Dashboard tile shows 98.5kg for September vs the 100.3kg used throughout this report, which is cross-verified against both the Monthly Report tab and a direct Raw Orders sum (the Dashboard's last sync was 07:23 on 25/09, a few hours stale).",
+  "insights": [
+    {
+      "tone": "down",
+      "icon": "down",
+      "title": "This week's volume fell sharply from last week",
+      "body": "Revenue dropped to £2,202 from £5,180 (-57.5%), orders fell to 7 from 19 (-63.2%), and active cafés fell to 7 from 18 (-61.1%) week-over-week. Worth a quick check on whether this is normal week-to-week variance — last week (Sep 7-13) was one of September's stronger weeks — or a gap in outreach/fulfilment."
+    },
+    {
+      "tone": "info",
+      "icon": "info",
+      "title": "Outstanding is a normal share this week — nothing overdue",
+      "body": "£537 of this week's £2,202 invoiced (24.4%) is still outstanding, a typical share and not a red flag — none of it is confirmed 30+ days overdue. Month-to-date outstanding sits at £3,200.50 of £14,328.50 invoiced (22.3%), in line with prior months."
+    },
+    {
+      "tone": "warn",
+      "icon": "target",
+      "title": "September is 31.0% toward its 324kg floor with 4 days left",
+      "body": "100.3kg shipped through day 26 of 30 (~3.9kg/day average) leaves 223.7kg to find in the final 4 days — not realistically closeable this month. Repeat volume from September's leaders (Chiya Cafe, HER DAYS Cafe, WE ARE LARDER) is the fastest lever for whatever's still recoverable, with the rest carrying into October's push."
+    },
+    {
+      "tone": "warn",
+      "icon": "warn",
+      "title": "59 of 99 active partners haven't ordered in 21+ days",
+      "body": "The follow-up table below shows only the 8 most overdue (79-107 days since last order); the real win-back list is far larger — nearly 6 in 10 of the CRM's active-status cafés. Worth a dedicated re-engagement push rather than one-off nudges."
+    },
+    {
+      "tone": "users",
+      "icon": "heart",
+      "title": "Chiya Cafe and HER DAYS Cafe are September's co-leaders",
+      "body": "Chiya Cafe (£1,386, 3 orders) and HER DAYS Cafe (£1,326, 3 orders) are this month's top two accounts by revenue, both repeat orderers. A personal thank-you touch to both would help lock in the reorder habit heading into October."
+    },
+    {
+      "tone": "info",
+      "icon": "bulb",
+      "title": "The +58kg floor hasn't been cleared once yet",
+      "body": "July shipped 134.75kg against a 208kg target and August shipped 204.05kg against 266kg (though volume grew 51% month-over-month); September is tracking a similar shortfall. Only three months of CRM history exist, so this isn't a confirmed trend, but the floor has stayed ahead of actual growth every month so far — worth watching whether that gap narrows or widens."
+    }
+  ]
+}
