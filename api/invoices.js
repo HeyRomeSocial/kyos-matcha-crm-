@@ -1,12 +1,12 @@
-// POST /api/invoices — create an invoice programmatically (same effect as UI "Save Invoice & Generate PDF")
-const { createClient } = require('@supabase/supabase-js')
-const { lineItemKg, matchSku, auth, generatePdf } = require('./_lib')
+// POST /api/invoices — create an invoice programmatically
+import { createClient } from '@supabase/supabase-js'
+import { lineItemKg, matchSku, auth, generatePdf } from './_lib.js'
 
 function getDb() {
   return createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
         subtotal: existing.subtotal,
         total: existing.total,
         pdf_url: existing.invoice_pdf_url,
-        pdf_base64: null, // PDF already stored — fetch via GET /api/invoices/{KM}/pdf
+        pdf_base64: null,
       })
     }
   }
@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
   for (const li of line_items) {
     const desc = li.product || li.desc || li.description || ''
     if (!desc) return res.status(400).json({ error: 'Each line item requires a product/desc field' })
-    if (Number(li.qty) <= 0) return res.status(400).json({ error: `Invalid qty for "${desc}" — must be > 0` })
+    if (Number(li.qty) <= 0) return res.status(400).json({ error: `Invalid qty for "${desc}"` })
     if (Number(li.unit_price ?? li.price ?? -1) < 0) return res.status(400).json({ error: `Invalid unit_price for "${desc}"` })
   }
 
@@ -57,10 +57,9 @@ module.exports = async function handler(req, res) {
   } else if (partner_name) {
     const { data } = await db.from('partners').select('*').ilike('name', `%${partner_name}%`).limit(1)
     partner = data?.[0] || null
-    if (!partner) return res.status(404).json({ error: `No partner matching "${partner_name}"` })
   }
 
-  // ── Settings (banking, from address) ──────────────────────────────────────
+  // ── Settings ───────────────────────────────────────────────────────────────
   const { data: settings } = await db.from('settings').select('*').eq('id', 1).maybeSingle()
   const fromAddress = {
     name: settings?.from_name || 'Kyos Matcha',
@@ -73,7 +72,6 @@ module.exports = async function handler(req, res) {
     accountNumber: settings?.bank_account || '86383529',
   }
 
-  // ── Build bill_to ──────────────────────────────────────────────────────────
   const billTo = {
     name: bill_to?.business_name || partner?.name || '',
     contact: bill_to?.contact_name || partner?.contact_name || '',
@@ -81,7 +79,6 @@ module.exports = async function handler(req, res) {
     email: bill_to?.email || partner?.email || '',
   }
 
-  // ── Normalize line items ───────────────────────────────────────────────────
   const items = line_items.map(li => ({
     desc: li.product || li.desc || li.description || '',
     qty: Number(li.qty),
@@ -93,7 +90,7 @@ module.exports = async function handler(req, res) {
   const invoiceDate = invoice_date || new Date().toISOString().slice(0, 10)
   const invoiceNote = note || ''
 
-  // ── Next invoice number (retry on collision) ───────────────────────────────
+  // ── Next invoice number ────────────────────────────────────────────────────
   let invoiceNumber, orderId
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data: allOrders } = await db.from('orders').select('invoice_number')
@@ -115,19 +112,17 @@ module.exports = async function handler(req, res) {
       idempotency_key: idempotency_key || null,
     }).select().single()
 
-    if (insertErr?.code === '23505') continue // duplicate KM number, retry
+    if (insertErr?.code === '23505') continue
     if (insertErr) return res.status(500).json({ error: insertErr.message })
 
     orderId = inserted.id
     break
   }
-  if (!orderId) return res.status(500).json({ error: 'Could not allocate unique invoice number after 5 attempts' })
+  if (!orderId) return res.status(500).json({ error: 'Could not allocate invoice number' })
 
   try {
-    // ── Generate PDF ─────────────────────────────────────────────────────────
     const pdfBuffer = await generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, banking, lineItems: items, subtotal, total, invoiceNote })
 
-    // ── Upload to Supabase Storage ────────────────────────────────────────────
     const slug = (partner?.name || billTo.name || '').replace(/[^a-zA-Z0-9]/g, '').trim()
     const filename = `${slug ? slug + '_' : ''}${invoiceNumber}.pdf`
     const { error: uploadErr } = await db.storage.from('invoices').upload(filename, pdfBuffer, { contentType: 'application/pdf', upsert: true })
@@ -136,7 +131,6 @@ module.exports = async function handler(req, res) {
     const { data: { publicUrl } } = db.storage.from('invoices').getPublicUrl(filename)
     await db.from('orders').update({ invoice_pdf_url: publicUrl }).eq('id', orderId)
 
-    // ── Deduct inventory ──────────────────────────────────────────────────────
     const { data: invItems } = await db.from('inventory').select('*')
     if (invItems?.length) {
       for (const li of items) {
@@ -151,7 +145,6 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // ── Update partner — promote prospect/sample_sent → active ───────────────
     if (partner) {
       const matchaKg = items.reduce((s, li) => s + lineItemKg(li), 0)
       const update = {
@@ -164,7 +157,6 @@ module.exports = async function handler(req, res) {
       await db.from('partners').update(update).eq('id', partner.id)
     }
 
-    // ── Create order_inbox entry (Orders to Pack) ─────────────────────────────
     const kgTotal = items.reduce((s, li) => s + lineItemKg(li), 0)
     await db.from('order_inbox').insert({
       email_id: `api-${invoiceNumber}`,
@@ -175,7 +167,7 @@ module.exports = async function handler(req, res) {
       parsed_partner: partner?.name || billTo.name,
       parsed_product: items.map(li => `${li.qty}x ${li.desc}`).join(', '),
       parsed_quantity_kg: kgTotal || null,
-      parsed_notes: `Created via API — invoice ${invoiceNumber}. Delivery address: ${billTo.address || 'see invoice'}`,
+      parsed_notes: `Created via API — invoice ${invoiceNumber}. Delivery: ${billTo.address || 'see invoice'}`,
       status: 'pending',
     })
 
@@ -189,7 +181,6 @@ module.exports = async function handler(req, res) {
       pdf_base64: pdfBuffer.toString('base64'),
     })
   } catch (err) {
-    // Roll back the order row so the KM number isn't wasted
     await db.from('orders').delete().eq('id', orderId)
     return res.status(500).json({ error: err.message })
   }

@@ -1,6 +1,7 @@
-// Shared helpers for API routes — mirrors src/lib/utils.js and src/lib/inventory.js
+// Shared helpers for API routes
+import PDFDocument from 'pdfkit'
 
-function lineItemKg(li) {
+export function lineItemKg(li) {
   const desc = (li.desc || '').toLowerCase()
   if (desc.includes('tin 30g') || desc.includes('30g ceremonial') || desc.includes('30g retail')) return (Number(li.qty) || 0) * 0.03
   if (desc.includes('tin 50g')) return (Number(li.qty) || 0) * 0.05
@@ -16,26 +17,25 @@ function lineItemKg(li) {
   return 0
 }
 
-function matchSku(desc) {
+export function matchSku(desc) {
   const d = (desc || '').toLowerCase()
   if (d.includes('matcha aaa') || d.includes('aaa')) return 'MATCHA-AAA'
   if (d.includes('matcha a') || (d.includes('matcha') && !d.includes('aaa'))) return 'MATCHA-A'
   return null
 }
 
-function fmtDate(d) {
+export function fmtDate(d) {
   if (!d) return ''
   try { const [y, m, day] = d.split('-'); return `${day}/${m}/${y}` } catch { return d }
 }
 
-function auth(req) {
+export function auth(req) {
   const header = req.headers.authorization || ''
   if (!header.startsWith('Bearer ')) return false
   return header.slice(7) === process.env.CRM_API_KEY
 }
 
-async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, banking, lineItems, subtotal, total, invoiceNote }) {
-  const PDFDocument = require('pdfkit')
+export async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, banking, lineItems, subtotal, total, invoiceNote }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 52 })
     const chunks = []
@@ -46,12 +46,10 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
     const GREEN = '#3D6034', LGRAY = '#6b7280', DARK = '#111111', LGGREEN = '#EEF3EC'
     const L = 52, R = 543, W = R - L
 
-    // ── Header ──────────────────────────────────────────────────────────────
     doc.fontSize(22).font('Helvetica-Bold').fillColor(GREEN).text(fromAddress.name || 'Kyos Matcha', L, 52, { continued: false })
     doc.fontSize(16).font('Helvetica-Bold').fillColor(DARK).text(invoiceNumber, L, 52, { align: 'right', width: W })
     doc.fontSize(9).font('Helvetica').fillColor(LGRAY).text(`Invoice Date: ${fmtDate(invoiceDate)}`, L, 76, { align: 'right', width: W })
 
-    // ── FROM / BILL TO ───────────────────────────────────────────────────────
     const sY = 115
     doc.fontSize(7).font('Helvetica-Bold').fillColor('#9ca3af').text('FROM', L, sY)
     doc.fontSize(10).font('Helvetica-Bold').fillColor(DARK).text(fromAddress.name || 'Kyos Matcha', L, sY + 13)
@@ -71,12 +69,10 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
     }
     if (billTo.email) doc.text(billTo.email, bX, bY)
 
-    // ── Table ────────────────────────────────────────────────────────────────
     const tY = 210
     const cols = { desc: L, qty: 320, price: 390, total: 463 }
     const colW = { desc: 258, qty: 60, price: 70, total: 80 }
 
-    // Header row
     doc.rect(L, tY, W, 26).fill(GREEN)
     doc.fontSize(9).font('Helvetica-Bold').fillColor('#ffffff')
       .text('Description', cols.desc + 8, tY + 8, { width: colW.desc })
@@ -100,7 +96,6 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
       rY += h
     })
 
-    // ── Totals ───────────────────────────────────────────────────────────────
     rY += 12
     doc.fontSize(9).font('Helvetica').fillColor(LGRAY).text('Subtotal', cols.price, rY, { width: colW.price, align: 'left' })
     doc.fillColor(DARK).text(`£${subtotal.toFixed(2)}`, cols.total, rY, { width: colW.total, align: 'right' })
@@ -113,7 +108,6 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
 
     rY += 40
 
-    // ── Invoice note ─────────────────────────────────────────────────────────
     if (invoiceNote) {
       const noteH = 32 + (Math.ceil(invoiceNote.length / 80) * 13)
       doc.rect(L, rY, W, noteH).fill('#fffbeb').stroke('#fcd34d')
@@ -121,7 +115,6 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
       rY += noteH + 16
     }
 
-    // ── Banking ──────────────────────────────────────────────────────────────
     doc.rect(L, rY, W, 74).fill(LGGREEN).stroke('#b3d0ab')
     doc.fontSize(9).font('Helvetica-Bold').fillColor(GREEN).text('BANKING DETAILS', L + 16, rY + 10)
     doc.fontSize(9).font('Helvetica').fillColor('#374151')
@@ -130,8 +123,6 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
       .font('Helvetica').text(`Account Number: `, L + 16, rY + 56, { continued: true }).font('Helvetica-Bold').text(banking.accountNumber || '86383529')
 
     rY += 92
-
-    // ── Footer ───────────────────────────────────────────────────────────────
     doc.moveTo(L, rY).lineTo(R, rY).strokeColor('#f3f4f6').stroke()
     doc.fontSize(9).font('Helvetica').fillColor('#9ca3af')
       .text('Thank you for your business · kyosmatcha.com · partners@kyosmatcha.com', L, rY + 12, { align: 'center', width: W })
@@ -139,5 +130,3 @@ async function generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, ba
     doc.end()
   })
 }
-
-module.exports = { lineItemKg, matchSku, fmtDate, auth, generatePdf }
