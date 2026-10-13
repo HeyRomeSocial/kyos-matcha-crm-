@@ -41,8 +41,11 @@ export function lineItemKg(li) {
   if (desc.includes('50g') || desc.includes('retail pouch') || (desc.includes('pouch') && !desc.includes('matcha')))
     return (Number(li.qty) || 0) * 0.05
   // Starter kit, whisk, shelf, shipping = no matcha kg
-  if (desc.includes('starter kit') || desc.includes('whisk') || desc.includes('shelf') || desc.includes('shipping'))
+  if (desc.includes('starter kit') || desc.includes('whisk') || desc.includes('shelf') || desc.includes('shipping') || desc.includes('spoon') || desc.includes('fees'))
     return 0
+  // Descriptions with kg embedded (e.g. "Premium Matcha — 10kg", qty=1)
+  const kgMatch = desc.match(/(\d+(?:\.\d+)?)\s*kg/)
+  if (kgMatch && desc.includes('matcha')) return Number(kgMatch[1]) * (Number(li.qty) || 1)
   // Bulk matcha lines — qty is in kg
   if (desc.includes('matcha')) return Number(li.qty) || 0
   return 0

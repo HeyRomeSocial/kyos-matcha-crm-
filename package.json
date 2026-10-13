@@ -11,15 +11,16 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",
     "chart.js": "^4.4.3",
+    "date-fns": "^3.6.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.379.0",
+    "pdfkit": "^0.20.2",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
-    "date-fns": "^3.6.0",
-    "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^6.23.1"
   },
