@@ -171,8 +171,10 @@ export default async function handler(req, res) {
 
     // ── Create order-to-pack (mandatory — one invoice = one pack order) ───────
     const kgTotal = items.reduce((s, li) => s + lineItemKg(li), 0)
+    const itemsSummary = items.map(li => `${li.qty}x ${li.desc}`).join(', ')
     const packNotes = [
       `Invoice ${invoiceNumber}`,
+      itemsSummary,
       billTo.address ? `Delivery: ${billTo.address}` : null,
       `invoice_created: true`,
     ].filter(Boolean).join(' | ')
@@ -184,14 +186,20 @@ export default async function handler(req, res) {
       from_name: partner?.name || billTo.name,
       subject: `Order ${invoiceNumber}`,
       parsed_partner: partner?.name || billTo.name,
-      parsed_product: items.map(li => `${li.qty}x ${li.desc}`).join(', '),
-      parsed_quantity_kg: kgTotal || null,
+      parsed_product: itemsSummary,
+      parsed_quantity_kg: kgTotal > 0 ? kgTotal : null,
       parsed_notes: packNotes,
       status: 'pending',
     }).select('id').single()
 
     if (packErr) {
-      console.error('order_inbox insert failed:', packErr.message)
+      // Fail loud — caller must know pack order wasn't created
+      return res.status(500).json({
+        error: `Invoice ${invoiceNumber} created but pack order failed: ${packErr.message}`,
+        invoice_number: invoiceNumber,
+        invoice_id: orderId,
+        pack_order_created: false,
+      })
     }
 
     return res.status(200).json({
