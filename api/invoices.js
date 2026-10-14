@@ -30,6 +30,7 @@ export default async function handler(req, res) {
         total: existing.total,
         pdf_url: existing.invoice_pdf_url,
         pdf_base64: null,
+        pack_order_created: null,
       })
     }
   }
@@ -79,6 +80,7 @@ export default async function handler(req, res) {
     email: bill_to?.email || partner?.email || '',
   }
 
+  // Use line items exactly as sent — caller is responsible for delivery line items
   const items = line_items.map(li => ({
     desc: li.product || li.desc || li.description || '',
     qty: Number(li.qty),
@@ -121,6 +123,7 @@ export default async function handler(req, res) {
   if (!orderId) return res.status(500).json({ error: 'Could not allocate invoice number' })
 
   try {
+    // ── Generate PDF ──────────────────────────────────────────────────────────
     const pdfBuffer = await generatePdf({ invoiceNumber, invoiceDate, billTo, fromAddress, banking, lineItems: items, subtotal, total, invoiceNote })
 
     const slug = (partner?.name || billTo.name || '').replace(/[^a-zA-Z0-9]/g, '').trim()
@@ -131,20 +134,29 @@ export default async function handler(req, res) {
     const { data: { publicUrl } } = db.storage.from('invoices').getPublicUrl(filename)
     await db.from('orders').update({ invoice_pdf_url: publicUrl }).eq('id', orderId)
 
+    // ── Deduct inventory (bulk matcha only — qty = kg) ────────────────────────
     const { data: invItems } = await db.from('inventory').select('*')
     if (invItems?.length) {
       for (const li of items) {
         const d = li.desc.toLowerCase()
-        if (!d.includes('matcha') || d.includes('50g') || d.includes('pouch') || d.includes('starter kit') || d.includes('shipping') || d.includes('spoon')) continue
+        // Skip non-matcha and retail items (tins/pouches handled by separate retail stock)
+        if (!d.includes('matcha')) continue
+        if (d.includes('50g') || d.includes('pouch') || d.includes('starter kit') ||
+            d.includes('shipping') || d.includes('spoon') || d.includes('tin')) continue
         const sku = matchSku(li.desc)
+        if (!sku) continue
         const invItem = invItems.find(i => i.sku === sku)
-        if (!invItem || li.qty <= 0) continue
+        if (!invItem) continue
         const newStock = Math.max(Number(invItem.stock_kg) - li.qty, 0)
         await db.from('inventory').update({ stock_kg: newStock, updated_at: new Date().toISOString() }).eq('id', invItem.id)
-        await db.from('inventory_transactions').insert({ inventory_id: invItem.id, order_id: orderId, type: 'sale', qty_change: -li.qty, notes: `Invoice ${invoiceNumber}` })
+        await db.from('inventory_transactions').insert({
+          inventory_id: invItem.id, order_id: orderId, type: 'sale',
+          qty_change: -li.qty, notes: `Invoice ${invoiceNumber}`
+        })
       }
     }
 
+    // ── Update partner stats + promote prospect/sample_sent → active ──────────
     if (partner) {
       const matchaKg = items.reduce((s, li) => s + lineItemKg(li), 0)
       const update = {
@@ -157,8 +169,15 @@ export default async function handler(req, res) {
       await db.from('partners').update(update).eq('id', partner.id)
     }
 
+    // ── Create order-to-pack (mandatory — one invoice = one pack order) ───────
     const kgTotal = items.reduce((s, li) => s + lineItemKg(li), 0)
-    await db.from('order_inbox').insert({
+    const packNotes = [
+      `Invoice ${invoiceNumber}`,
+      billTo.address ? `Delivery: ${billTo.address}` : null,
+      `invoice_created: true`,
+    ].filter(Boolean).join(' | ')
+
+    const { data: packRow, error: packErr } = await db.from('order_inbox').insert({
       email_id: `api-${invoiceNumber}`,
       received_at: new Date().toISOString(),
       from_email: 'api',
@@ -167,9 +186,13 @@ export default async function handler(req, res) {
       parsed_partner: partner?.name || billTo.name,
       parsed_product: items.map(li => `${li.qty}x ${li.desc}`).join(', '),
       parsed_quantity_kg: kgTotal || null,
-      parsed_notes: `Created via API — invoice ${invoiceNumber}. Delivery: ${billTo.address || 'see invoice'}`,
+      parsed_notes: packNotes,
       status: 'pending',
-    })
+    }).select('id').single()
+
+    if (packErr) {
+      console.error('order_inbox insert failed:', packErr.message)
+    }
 
     return res.status(200).json({
       invoice_number: invoiceNumber,
@@ -179,6 +202,8 @@ export default async function handler(req, res) {
       total,
       pdf_url: publicUrl,
       pdf_base64: pdfBuffer.toString('base64'),
+      pack_order_created: !packErr,
+      pack_order_id: packRow?.id || null,
     })
   } catch (err) {
     await db.from('orders').delete().eq('id', orderId)
